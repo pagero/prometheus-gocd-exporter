@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Projects>
+  <Project name="foobar-release-2018-09-19 :: build" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/pipelines/foobar-release-2018-09-19/22/build/1" />
+  <Project name="foobar-release-2018-09-19 :: build :: defaultJob" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/tab/build/detail/foobar-release-2018-09-19/22/build/1/defaultJob" />
+  <Project name="foobar-release-2018-09-20 :: build" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/pipelines/foobar-release-2018-09-20/22/build/1" />
+  <Project name="foobar-release-2018-09-20 :: build :: defaultJob" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/tab/build/detail/foobar-release-2018-09-20/22/build/1/defaultJob" />
+  <Project name="foobar-release-2018-09-21 :: build" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/pipelines/foobar-release-2018-09-21/22/build/1" />
+  <Project name="foobar-release-2018-09-21 :: build :: defaultJob" activity="Sleeping" lastBuildStatus="Success" lastBuildLabel="22" lastBuildTime="2018-09-25T12:59:49Z" webUrl="http://go.foobar.local/go/tab/build/detail/foobar-release-2018-09-21/22/build/1/defaultJob" />
+</Projects>
