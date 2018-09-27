@@ -83,7 +83,14 @@ func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 		if err != nil {
 			return err
 		}
-		jobStates := map[string]int{}
+		jobStates := map[string]int{
+			"Scheduled":  0,
+			"Assigned":   0,
+			"Preparing":  0,
+			"Building":   0,
+			"Completing": 0,
+			"Completed":  0,
+		}
 		for _, project := range cc.Projects {
 			if project.Activity == "Sleeping" {
 				continue
