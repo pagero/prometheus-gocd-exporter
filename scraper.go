@@ -61,6 +61,7 @@ func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 			// "Scheduled", "Assigned", "Preparing",
 			// "Building", "Completing", "Completed"
 			"state",
+			"pipeline",
 		},
 	)
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
@@ -83,14 +84,7 @@ func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 		if err != nil {
 			return err
 		}
-		jobStates := map[string]int{
-			"Scheduled":  0,
-			"Assigned":   0,
-			"Preparing":  0,
-			"Building":   0,
-			"Completing": 0,
-			"Completed":  0,
-		}
+		jobStates := map[string]map[string]int{}
 		for _, project := range cc.Projects {
 			if project.Activity == "Sleeping" {
 				continue
@@ -107,18 +101,30 @@ func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 			}
 			stages := len(p.Stages)
 			jobs := 0
+			jobStates[project.Pipeline()] = map[string]int{
+				"Scheduled":  0,
+				"Assigned":   0,
+				"Preparing":  0,
+				"Building":   0,
+				"Completing": 0,
+				"Completed":  0,
+			}
 			for _, stage := range p.Stages {
 				for _, job := range stage.Jobs {
 					jobs++
-					jobStates[job.State]++
+					jobStates[project.Pipeline()][job.State]++
 				}
 			}
 			log.Printf("\tStages: %d - Jobs %d\n", stages, jobs)
 		}
 
 		gauge.Reset()
-		for state, count := range jobStates {
-			gauge.WithLabelValues(state).Set(float64(count))
+		for pipeline, states := range jobStates {
+			for state, count := range states {
+				gauge.WithLabelValues(
+					state, pipeline,
+				).Set(float64(count))
+			}
 		}
 
 		return nil
