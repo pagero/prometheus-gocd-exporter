@@ -87,9 +87,10 @@ type CCTray struct {
 }
 
 type CCTrayProject struct {
-	Name     string `xml:"name,attr"`
-	Activity string `xml:"activity,attr"`
-	URL      string `xml:"webUrl,attr"`
+	Name       string `xml:"name,attr"`
+	Activity   string `xml:"activity,attr"`
+	LastResult string `xml:"lastBuildStatus,attr"`
+	URL        string `xml:"webUrl,attr"`
 
 	urlParts []string
 }

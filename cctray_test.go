@@ -32,5 +32,8 @@ func TestCCTrayParse(t *testing.T) {
 	if n := p.Instance(); n != 22 {
 		t.Error("invalid instance", n)
 	}
+	if p.LastResult != "Success" {
+		t.Error("invalid LastResult")
+	}
 
 }

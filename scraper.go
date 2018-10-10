@@ -28,21 +28,35 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}
 
 	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	jobsByState, jobsByStateScrape := newJobsByStateCollector(conf, ccCache)
+	jobsByState, pipelineInstanceScrape := newPipelineInstanceCollector(conf, ccCache)
 	if err := conf.Registerer.Register(jobsByState); err != nil {
 		return nil, err
+	}
+
+	pipelineResult, buildsCount, pipelineResultScrape := newPipelineResultCollector(conf, ccCache)
+	if err := conf.Registerer.Register(pipelineResult); err != nil {
+		return nil, err
+	}
+	if err := conf.Registerer.Register(buildsCount); err != nil {
+		return nil, err
+	}
+
+	scrapers := []Scraper{
+		agentScrape,
+		pipelineInstanceScrape,
+		pipelineResultScrape,
 	}
 
 	return func(ctx context.Context) error {
 		if err := ccCache.Update(ctx); err != nil {
 			return err
 		}
-		routines := 2
-		errCh := make(chan error, routines)
-		go func() { errCh <- agentScrape(ctx) }()
-		go func() { errCh <- jobsByStateScrape(ctx) }()
+		errCh := make(chan error, len(scrapers))
+		for _, scraper := range scrapers {
+			go func(s Scraper) { errCh <- s(ctx) }(scraper)
+		}
 
-		for n := 0; n < routines; n++ {
+		for range scrapers {
 			if err := <-errCh; err != nil {
 				return err
 			}
@@ -52,8 +66,10 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newJobsByStateCollector(conf *Config, ccCache *CCTrayCache) (*prometheus.GaugeVec, Scraper) {
-	gauge := prometheus.NewGaugeVec(
+func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
+	jobsByState *prometheus.GaugeVec, _ Scraper,
+) {
+	jobsByState = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "jobs_by_state_count",
@@ -66,14 +82,16 @@ func newJobsByStateCollector(conf *Config, ccCache *CCTrayCache) (*prometheus.Ga
 			"pipeline",
 		},
 	)
+
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
-	return gauge, func(ctx context.Context) error {
+	return jobsByState, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
 		if err != nil {
 			return err
 		}
 		jobStates := map[string]map[string]int{}
+		pipelineCache := map[string]*gocd.PipelineInstance{}
 		for _, project := range cc.Projects {
 			if project.Activity == "Sleeping" {
 				continue
@@ -83,10 +101,16 @@ func newJobsByStateCollector(conf *Config, ccCache *CCTrayCache) (*prometheus.Ga
 				return ctx.Err()
 			default:
 			}
-			log.Printf("Project: %s - %s\n", project.Name, project.URL)
-			p, err := client.GetPipelineInstance(project.Pipeline(), int(project.Instance()))
-			if err != nil {
-				return err
+			log.Printf("jobs_by_state: Project: %s - %s\n", project.Name, project.URL)
+			// Pipeline occurs once for each stage, cache to avoid unnecessary API calls.
+			p, ok := pipelineCache[project.Pipeline()]
+			if !ok {
+				var err error
+				p, err = client.GetPipelineInstance(project.Pipeline(), int(project.Instance()))
+				if err != nil {
+					return err
+				}
+				pipelineCache[project.Pipeline()] = p
 			}
 			stages := len(p.Stages)
 			jobs := 0
@@ -104,15 +128,84 @@ func newJobsByStateCollector(conf *Config, ccCache *CCTrayCache) (*prometheus.Ga
 					jobStates[project.Pipeline()][job.State]++
 				}
 			}
-			log.Printf("\tStages: %d - Jobs %d\n", stages, jobs)
+			log.Printf("jobs_by_state:\tStages: %d - Jobs %d\n", stages, jobs)
 		}
 
-		gauge.Reset()
+		jobsByState.Reset()
 		for pipeline, states := range jobStates {
 			for state, count := range states {
-				gauge.WithLabelValues(
+				jobsByState.WithLabelValues(
 					state, pipeline,
 				).Set(float64(count))
+			}
+		}
+
+		return nil
+	}
+}
+
+func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
+	pipelineResultGauge *prometheus.GaugeVec, buildsCount *prometheus.CounterVec, _ Scraper,
+) {
+	pipelineResultGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "pipelines_result",
+			Help:      "Pipeline result statuses",
+		},
+		[]string{
+			"pipeline",
+			"stage",
+			"result",
+		},
+	)
+	buildsCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: conf.Namespace,
+			Name:      "builds_count",
+			Help:      "Number of builds",
+		},
+		[]string{
+			"pipeline",
+		},
+	)
+
+	return pipelineResultGauge, buildsCount, func(ctx context.Context) error {
+		cc, err := ccCache.Get(ctx)
+		if err != nil {
+			return err
+		}
+
+		pipelineResults := map[string]map[string]string{}
+		for _, project := range cc.Projects {
+			if project.LastResult == "" {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+			log.Printf("pipelines_result: Project: %s - %s\n", project.Name, project.URL)
+
+			r, ok := pipelineResults[project.Pipeline()]
+			if !ok {
+				r = map[string]string{}
+				buildsCount.WithLabelValues(
+					project.Pipeline(),
+				).Set(float64(project.Instance()))
+			}
+			r[project.Stage()] = project.LastResult
+			pipelineResults[project.Pipeline()] = r
+			log.Printf("pipelines_result:\tStage: %s - Result: %s\n", project.Stage(), project.LastResult)
+		}
+
+		pipelineResultGauge.Reset()
+		for pipeline, stages := range pipelineResults {
+			for stage, result := range stages {
+				pipelineResultGauge.WithLabelValues(
+					pipeline, stage, result,
+				).Set(1)
 			}
 		}
 
