@@ -2,9 +2,7 @@ package gocdexporter
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/ashwanthkumar/go-gocd"
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,12 +27,16 @@ func NewScraper(conf *Config) (Scraper, error) {
 		return nil, err
 	}
 
-	jobsByState, jobsByStateScrape := newJobsByStateCollector(conf)
+	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
+	jobsByState, jobsByStateScrape := newJobsByStateCollector(conf, ccCache)
 	if err := conf.Registerer.Register(jobsByState); err != nil {
 		return nil, err
 	}
 
 	return func(ctx context.Context) error {
+		if err := ccCache.Update(ctx); err != nil {
+			return err
+		}
 		routines := 2
 		errCh := make(chan error, routines)
 		go func() { errCh <- agentScrape(ctx) }()
@@ -50,7 +52,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
+func newJobsByStateCollector(conf *Config, ccCache *CCTrayCache) (*prometheus.GaugeVec, Scraper) {
 	gauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
@@ -67,20 +69,7 @@ func newJobsByStateCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
 	return gauge, func(ctx context.Context) error {
-		req, err := http.NewRequest(
-			"GET", fmt.Sprintf("%s/go/%s", conf.GocdURL, "cctray.xml"), nil)
-		if err != nil {
-			return err
-		}
-		req = req.WithContext(ctx)
-		req.SetBasicAuth(conf.GocdUser, conf.GocdPass)
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-
-		cc, err := ParseCCTray(res.Body)
+		cc, err := ccCache.Get(ctx)
 		if err != nil {
 			return err
 		}

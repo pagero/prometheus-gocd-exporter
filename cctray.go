@@ -1,8 +1,12 @@
 package gocdexporter
 
 import (
+	"context"
 	"encoding/xml"
+	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 )
@@ -21,6 +25,61 @@ func ParseCCTray(input io.Reader) (*CCTray, error) {
 		}
 	}
 	return &filtered, nil
+}
+
+// RequestCCTray performs basic auth against provided URL and calls ParseCCTray.
+func RequestCCTray(ctx context.Context, url, user, pass string) (*CCTray, error) {
+	req, err := http.NewRequest(
+		"GET", fmt.Sprintf("%s/go/%s", url, "cctray.xml"), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	req.SetBasicAuth(user, pass)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	return ParseCCTray(res.Body)
+}
+
+// CCTrayCache keeps a cache of CCTray.
+type CCTrayCache struct {
+	user string
+	pass string
+	url  string
+	cc   *CCTray
+}
+
+func NewCCTrayCache(url, user, pass string) *CCTrayCache {
+	return &CCTrayCache{
+		url:  url,
+		user: user,
+		pass: pass,
+	}
+}
+
+// Get cached CCTray.
+func (cache *CCTrayCache) Get(ctx context.Context) (*CCTray, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	if cache.cc == nil {
+		return nil, errors.New("cache not updated")
+	}
+	return cache.cc, nil
+}
+
+// Update the CCTray cache.
+func (cache *CCTrayCache) Update(ctx context.Context) error {
+	var err error
+	cache.cc, err = RequestCCTray(ctx, cache.url, cache.user, cache.pass)
+	return err
 }
 
 type CCTray struct {
