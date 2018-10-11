@@ -33,11 +33,14 @@ func NewScraper(conf *Config) (Scraper, error) {
 		return nil, err
 	}
 
-	pipelineResult, buildsCount, pipelineResultScrape := newPipelineResultCollector(conf, ccCache)
+	pipelineResult, flappingResult, buildsCount, pipelineResultScrape := newPipelineResultCollector(conf, ccCache)
 	if err := conf.Registerer.Register(pipelineResult); err != nil {
 		return nil, err
 	}
 	if err := conf.Registerer.Register(buildsCount); err != nil {
+		return nil, err
+	}
+	if err := conf.Registerer.Register(flappingResult); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +148,8 @@ func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
 }
 
 func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
-	pipelineResultGauge *prometheus.GaugeVec, buildsCount *prometheus.CounterVec, _ Scraper,
+	pipelineResultGauge *prometheus.GaugeVec, flappingResultGauge *prometheus.GaugeVec,
+	buildsCount *prometheus.CounterVec, _ Scraper,
 ) {
 	pipelineResultGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -159,6 +163,18 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 			"result",
 		},
 	)
+	// Can be used to detect changes in results a.k.a. flapping pipeline.
+	flappingResultGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "pipelines_result_flapping",
+			Help:      "Pipeline result statuses as numbers",
+		},
+		[]string{
+			"pipeline",
+			"stage",
+		},
+	)
 	buildsCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: conf.Namespace,
@@ -170,7 +186,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		},
 	)
 
-	return pipelineResultGauge, buildsCount, func(ctx context.Context) error {
+	return pipelineResultGauge, flappingResultGauge, buildsCount, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
 		if err != nil {
 			return err
@@ -201,11 +217,19 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		}
 
 		pipelineResultGauge.Reset()
+		flappingResultGauge.Reset()
 		for pipeline, stages := range pipelineResults {
 			for stage, result := range stages {
 				pipelineResultGauge.WithLabelValues(
 					pipeline, stage, result,
 				).Set(1)
+				resultAsValue := 0.0
+				if result == "Success" {
+					resultAsValue = 1.0
+				}
+				flappingResultGauge.WithLabelValues(
+					pipeline, stage,
+				).Set(resultAsValue)
 			}
 		}
 
