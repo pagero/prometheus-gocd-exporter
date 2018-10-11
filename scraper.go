@@ -185,6 +185,9 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 			"pipeline",
 		},
 	)
+	// Cache to check if counter goes up or down. Sometimes and older instance count
+	// is displayed in cctray.
+	buildsCountCache := map[string]int64{}
 
 	return pipelineResultGauge, flappingResultGauge, buildsCount, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
@@ -207,12 +210,21 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 			r, ok := pipelineResults[project.Pipeline()]
 			if !ok {
 				r = map[string]string{}
+			}
+			r[project.Stage()] = project.LastResult
+			pipelineResults[project.Pipeline()] = r
+
+			c, ok := buildsCountCache[project.Pipeline()]
+			if !ok {
+				buildsCountCache[project.Pipeline()] = project.Instance()
+			}
+			// Make sure we don't try to decrease a counter because of old instance info.
+			if c < project.Instance() {
 				buildsCount.WithLabelValues(
 					project.Pipeline(),
 				).Set(float64(project.Instance()))
 			}
-			r[project.Stage()] = project.LastResult
-			pipelineResults[project.Pipeline()] = r
+
 			log.Printf("pipelines_result:\tStage: %s - Result: %s\n", project.Stage(), project.LastResult)
 		}
 
