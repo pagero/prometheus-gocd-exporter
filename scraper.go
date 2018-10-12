@@ -3,6 +3,7 @@ package gocdexporter
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/ashwanthkumar/go-gocd"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,32 +23,30 @@ type Scraper func(context.Context) error
 
 // NewScraper configures prometheus metrics to be scraped from GoCD.
 func NewScraper(conf *Config) (Scraper, error) {
-	agents, agentScrape := newAgentCollector(conf)
-	if err := conf.Registerer.Register(agents); err != nil {
-		return nil, err
-	}
-
 	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	jobsByState, pipelineInstanceScrape := newPipelineInstanceCollector(conf, ccCache)
-	if err := conf.Registerer.Register(jobsByState); err != nil {
-		return nil, err
+
+	scrapers := []Scraper{}
+	add := func(c []prometheus.Collector, s Scraper) error {
+		scrapers = append(scrapers, s)
+		for _, collector := range c {
+			if err := conf.Registerer.Register(collector); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
-	pipelineResult, flappingResult, buildsCount, pipelineResultScrape := newPipelineResultCollector(conf, ccCache)
-	if err := conf.Registerer.Register(pipelineResult); err != nil {
+	if err := add(newAgentCollector(conf)); err != nil {
 		return nil, err
 	}
-	if err := conf.Registerer.Register(buildsCount); err != nil {
+	if err := add(newPipelineInstanceCollector(conf, ccCache)); err != nil {
 		return nil, err
 	}
-	if err := conf.Registerer.Register(flappingResult); err != nil {
+	if err := add(newPipelineResultCollector(conf, ccCache)); err != nil {
 		return nil, err
 	}
-
-	scrapers := []Scraper{
-		agentScrape,
-		pipelineInstanceScrape,
-		pipelineResultScrape,
+	if err := add(newPipelineDurationCollector(conf, ccCache)); err != nil {
+		return nil, err
 	}
 
 	return func(ctx context.Context) error {
@@ -70,9 +69,9 @@ func NewScraper(conf *Config) (Scraper, error) {
 }
 
 func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
-	jobsByState *prometheus.GaugeVec, _ Scraper,
+	[]prometheus.Collector, Scraper,
 ) {
-	jobsByState = prometheus.NewGaugeVec(
+	jobsByState := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "jobs_by_state_count",
@@ -88,7 +87,7 @@ func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
-	return jobsByState, func(ctx context.Context) error {
+	return []prometheus.Collector{jobsByState}, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
 		if err != nil {
 			return err
@@ -148,10 +147,9 @@ func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
 }
 
 func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
-	pipelineResultGauge *prometheus.GaugeVec, flappingResultGauge *prometheus.GaugeVec,
-	buildsCount *prometheus.CounterVec, _ Scraper,
+	[]prometheus.Collector, Scraper,
 ) {
-	pipelineResultGauge = prometheus.NewGaugeVec(
+	pipelineResultGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "pipelines_result",
@@ -164,7 +162,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		},
 	)
 	// Can be used to detect changes in results a.k.a. flapping pipeline.
-	flappingResultGauge = prometheus.NewGaugeVec(
+	flappingResultGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "pipelines_result_flapping",
@@ -175,7 +173,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 			"stage",
 		},
 	)
-	buildsCount = prometheus.NewCounterVec(
+	buildsCount := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: conf.Namespace,
 			Name:      "builds_count",
@@ -188,8 +186,9 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 	// Cache to check if counter goes up or down. Sometimes and older instance count
 	// is displayed in cctray.
 	buildsCountCache := map[string]int64{}
+	collectors := []prometheus.Collector{pipelineResultGauge, flappingResultGauge, buildsCount}
 
-	return pipelineResultGauge, flappingResultGauge, buildsCount, func(ctx context.Context) error {
+	return collectors, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
 		if err != nil {
 			return err
@@ -249,7 +248,84 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 	}
 }
 
-func newAgentCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
+func newPipelineDurationCollector(conf *Config, ccCache *CCTrayCache) (
+	[]prometheus.Collector, Scraper,
+) {
+	pipelineStateGauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "pipelines_by_state_count",
+			Help:      "Pipeline state",
+		},
+		[]string{
+			"pipeline",
+			"state",
+		},
+	)
+	pipelineDurationGauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "pipelines_by_duration_seconds",
+			Help:      "Pipeline activity duration",
+		},
+		[]string{
+			"pipeline",
+			"stage",
+		},
+	)
+	collectors := []prometheus.Collector{pipelineStateGauge, pipelineDurationGauge}
+
+	activityStarted := map[string]map[string]time.Time{}
+	return collectors, func(ctx context.Context) error {
+		cc, err := ccCache.Get(ctx)
+		if err != nil {
+			return err
+		}
+
+		pipelineStates := map[string]string{}
+		for _, project := range cc.Projects {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+			pipelineStates[project.Pipeline()] = project.Activity
+
+			stages, ok := activityStarted[project.Pipeline()]
+			if !ok {
+				stages = map[string]time.Time{}
+			}
+			// Track execution duration
+			switch project.Activity {
+			case "Building":
+				if _, ok := stages[project.Stage()]; !ok {
+					stages[project.Stage()] = time.Now()
+				}
+			case "Sleeping":
+				started, ok := stages[project.Stage()]
+				if !ok {
+					break
+				}
+				pipelineDurationGauge.WithLabelValues(
+					project.Pipeline(), project.Stage(),
+				).Set(time.Since(started).Seconds())
+				delete(stages, project.Stage())
+			}
+			activityStarted[project.Pipeline()] = stages
+		}
+
+		pipelineStateGauge.Reset()
+		for pipeline, state := range pipelineStates {
+			pipelineStateGauge.WithLabelValues(
+				pipeline, state,
+			).Set(1)
+		}
+
+		return nil
+	}
+}
+
+func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
 	gauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
@@ -267,7 +343,7 @@ func newAgentCollector(conf *Config) (*prometheus.GaugeVec, Scraper) {
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return gauge, func(ctx context.Context) error {
+	return []prometheus.Collector{gauge}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
 			log.Fatal(err)
