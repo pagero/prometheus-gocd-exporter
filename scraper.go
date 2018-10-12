@@ -2,6 +2,7 @@ package gocdexporter
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -39,7 +40,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	if err := add(newAgentCollector(conf)); err != nil {
 		return nil, err
 	}
-	if err := add(newPipelineInstanceCollector(conf, ccCache)); err != nil {
+	if err := add(newJobsCollector(conf, ccCache)); err != nil {
 		return nil, err
 	}
 	if err := add(newPipelineResultCollector(conf, ccCache)); err != nil {
@@ -68,7 +69,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newPipelineInstanceCollector(conf *Config, ccCache *CCTrayCache) (
+func newJobsCollector(conf *Config, ccCache *CCTrayCache) (
 	[]prometheus.Collector, Scraper,
 ) {
 	jobsByState := prometheus.NewGaugeVec(
@@ -326,7 +327,7 @@ func newPipelineDurationCollector(conf *Config, ccCache *CCTrayCache) (
 }
 
 func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
-	gauge := prometheus.NewGaugeVec(
+	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "agent_count",
@@ -341,18 +342,66 @@ func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
 			"agent_config_state",
 		},
 	)
+	agentJobGauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "agent_job",
+			Help:      "Assigned jobs",
+		},
+		[]string{
+			"pipeline",
+			"stage",
+			"job",
+			"rerun",
+			"state",
+			"result",
+			"agent",
+		},
+	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return []prometheus.Collector{gauge}, func(ctx context.Context) error {
+	return []prometheus.Collector{agentCountGauge, agentJobGauge}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		gauge.Reset()
+		// Quick stats first
+		agentCountGauge.Reset()
 		for _, a := range agents {
-			gauge.WithLabelValues(
+			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState,
 			).Add(1)
+		}
+
+		// Slower scrape for each job history
+		jobStats := [][]string{}
+		for _, a := range agents {
+			if a.BuildState != "Building" {
+				continue
+			}
+			history, err := client.GetJobHistory(a.BuildDetails.PipelineName, a.BuildDetails.StageName, a.BuildDetails.JobName, 0)
+			if err != nil {
+				return err
+			}
+			if len(history) == 0 {
+				return errors.New("AgentCollector: no history result")
+			}
+			job := history[0]
+			if job.AgentUUID != a.UUID {
+				log.Println("AgentCollector: mismatched UUID in job history")
+			}
+			rerun := "no"
+			if job.ReRun {
+				rerun = "yes"
+			}
+			jobStats = append(jobStats, []string{
+				job.PipelineName, job.StageName, job.Name,
+				rerun, job.State, job.Result, a.Hostname,
+			})
+		}
+		agentJobGauge.Reset()
+		for _, stats := range jobStats {
+			agentJobGauge.WithLabelValues(stats...).Set(1)
 		}
 
 		return nil
