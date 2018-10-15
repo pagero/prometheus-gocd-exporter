@@ -17,16 +17,17 @@ import (
 
 func main() {
 	once := flag.Bool("once", false, "Set to run one scrape and then exit")
-	duration := flag.Duration("duration", time.Minute, "The duration between scrapes")
+	duration := flag.String(
+		"duration", env("DURATION", "1m"), "The duration between scrapes")
 	ns := flag.String("namespace", "gocd", "Prometheus namespace (prefix)")
 	addr := flag.String(
 		"listen-address", ":8080", "The address to listen on for Prometheus requests.")
 	url := flag.String(
-		"gocdURL", environment("GOCD_URL", "http://localhost:8153"), "URL of the GoCD server")
+		"gocdURL", env("GOCD_URL", "http://localhost:8153"), "URL of the GoCD server")
 	user := flag.String(
-		"gocdUser", environment("GOCD_USER", "admin"), "GoCD dashboard user login")
+		"gocdUser", env("GOCD_USER", "admin"), "GoCD dashboard user login")
 	passwd := flag.String(
-		"gocdPass", environment("GOCD_PASS", "badger"), "GoCD dashboard user password")
+		"gocdPass", env("GOCD_PASS", "badger"), "GoCD dashboard user password")
 	flag.Parse()
 
 	ln, err := net.Listen("tcp", *addr)
@@ -35,8 +36,12 @@ func main() {
 	}
 	defer ln.Close()
 
+	dur, err := time.ParseDuration(*duration)
+	if err != nil {
+		log.Fatal(err)
+	}
 	healthCh := make(chan struct{}, 1)
-	go healthcheck(*duration, healthCh)
+	go healthcheck(dur, healthCh)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -47,7 +52,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		ticker := time.NewTicker(*duration)
+		ticker := time.NewTicker(dur)
 		defer ticker.Stop()
 
 		trigger := func(ctx context.Context, now time.Time) {
@@ -55,7 +60,7 @@ func main() {
 			case healthCh <- struct{}{}:
 			default:
 			}
-			ctx, cancel := context.WithDeadline(ctx, now.Add(*duration))
+			ctx, cancel := context.WithDeadline(ctx, now.Add(dur))
 			defer cancel()
 			if err := scrape(ctx); err != nil {
 				switch err {
@@ -102,8 +107,8 @@ func main() {
 	}
 }
 
-// environment key to lookup with fallback if not set.
-func environment(key, fallback string) string {
+// env key to lookup with fallback if not set.
+func env(key, fallback string) string {
 	if s, ok := os.LookupEnv(key); ok {
 		return s
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ashwanthkumar/go-gocd"
@@ -40,7 +41,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	if err := add(newAgentCollector(conf)); err != nil {
 		return nil, err
 	}
-	if err := add(newJobsCollector(conf, ccCache)); err != nil {
+	if err := add(newScheduledCollector(conf)); err != nil {
 		return nil, err
 	}
 	if err := add(newPipelineResultCollector(conf, ccCache)); err != nil {
@@ -69,78 +70,38 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newJobsCollector(conf *Config, ccCache *CCTrayCache) (
+func newScheduledCollector(conf *Config) (
 	[]prometheus.Collector, Scraper,
 ) {
-	jobsByState := prometheus.NewGaugeVec(
+	scheduledGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
-			Name:      "jobs_by_state_count",
-			Help:      "Number of jobs",
+			Name:      "jobs_scheduled_count",
+			Help:      "Number of jobs scheduled",
 		},
 		[]string{
-			// "Scheduled", "Assigned", "Preparing",
-			// "Building", "Completing", "Completed"
-			"state",
 			"pipeline",
+			"stage",
+			"job",
 		},
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
-	return []prometheus.Collector{jobsByState}, func(ctx context.Context) error {
-		cc, err := ccCache.Get(ctx)
+	return []prometheus.Collector{scheduledGauge}, func(ctx context.Context) error {
+		jobs, err := client.GetScheduledJobs()
 		if err != nil {
 			return err
 		}
-		jobStates := map[string]map[string]int{}
-		pipelineCache := map[string]*gocd.PipelineInstance{}
-		for _, project := range cc.Projects {
-			if project.Activity == "Sleeping" {
-				continue
+		scheduledGauge.Reset()
+		for _, job := range jobs {
+			parts := strings.Split(job.BuildLocator, "/")
+			if len(parts) != 5 {
+				return errors.New("scheduledCollector: unexpected scheduled build locator")
 			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-			log.Printf("jobs_by_state: Project: %s - %s\n", project.Name, project.URL)
-			// Pipeline occurs once for each stage, cache to avoid unnecessary API calls.
-			p, ok := pipelineCache[project.Pipeline()]
-			if !ok {
-				var err error
-				p, err = client.GetPipelineInstance(project.Pipeline(), int(project.Instance()))
-				if err != nil {
-					return err
-				}
-				pipelineCache[project.Pipeline()] = p
-			}
-			stages := len(p.Stages)
-			jobs := 0
-			jobStates[project.Pipeline()] = map[string]int{
-				"Scheduled":  0,
-				"Assigned":   0,
-				"Preparing":  0,
-				"Building":   0,
-				"Completing": 0,
-				"Completed":  0,
-			}
-			for _, stage := range p.Stages {
-				for _, job := range stage.Jobs {
-					jobs++
-					jobStates[project.Pipeline()][job.State]++
-				}
-			}
-			log.Printf("jobs_by_state:\tStages: %d - Jobs %d\n", stages, jobs)
-		}
-
-		jobsByState.Reset()
-		for pipeline, states := range jobStates {
-			for state, count := range states {
-				jobsByState.WithLabelValues(
-					state, pipeline,
-				).Set(float64(count))
-			}
+			scheduledGauge.WithLabelValues(
+				parts[0], parts[2], parts[4],
+			).Set(1)
 		}
 
 		return nil
