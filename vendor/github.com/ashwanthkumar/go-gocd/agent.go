@@ -9,12 +9,12 @@ import (
 
 // Agent Object
 type Agent struct {
-	UUID            string `json:"uuid,omitempty"`
-	Hostname        string `json:"hostname,omitempty"`
-	IPAddress       string `json:"ip_address,omitempty"`
-	Sandbox         string `json:"sandbox,omitempty"`
-	OperatingSystem string `json:"operating_system,omitempty"`
-	// FreeSpace        int      `json:"free_space,string,omitempty"` - There's inconsistency on how this field is being returned in the API
+	UUID             string `json:"uuid,omitempty"`
+	Hostname         string `json:"hostname,omitempty"`
+	IPAddress        string `json:"ip_address,omitempty"`
+	Sandbox          string `json:"sandbox,omitempty"`
+	OperatingSystem  string `json:"operating_system,omitempty"`
+	FreeSpace        int    `json:"free_space,omitempty"`
 	AgentConfigState string `json:"agent_config_state,omitempty"`
 	AgentState       string `json:"agent_state,omitempty"`
 	BuildState       string `json:"build_state,omitempty"`
