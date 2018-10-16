@@ -183,7 +183,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 			if c < project.Instance() {
 				buildsCount.WithLabelValues(
 					project.Pipeline(),
-				).Set(float64(project.Instance()))
+				).Add(float64(project.Instance() - c))
 			}
 
 			log.Printf("pipelines_result:\tStage: %s - Result: %s\n", project.Stage(), project.LastResult)

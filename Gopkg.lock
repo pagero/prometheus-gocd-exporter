@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "fix/api"
-  digest = "1:c6ce74ddcfe3272e321a3fa44b749737921eec0d5fb27989cae81c47a5fb89bd"
+  digest = "1:a7d35d64953972af7b4672ef2654cd27e9ab141e5e3811c77226c64f0af4330b"
   name = "github.com/ashwanthkumar/go-gocd"
   packages = ["."]
   pruneopts = "UT"
-  revision = "42cc252d3c1cd960053d3cd6497f30396364360d"
+  revision = "0aae696f5008afc9b9d770fbe8d2fe615479f20c"
   source = "github.com/balboah/go-gocd"
 
 [[projects]]
@@ -75,15 +75,16 @@
   version = "v0.8.0"
 
 [[projects]]
-  digest = "1:d14a5f4bfecf017cb780bdde1b6483e5deb87e12c332544d2c430eda58734bcb"
+  digest = "1:20a8a18488bdef471795af0413d9a3c9c35dc24ca93342329b884ba3c15cbaab"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
+  revision = "1cafe34db7fdec6022e17e00e1c1ea501022f3e4"
+  version = "v0.9.0"
 
 [[projects]]
   branch = "master"

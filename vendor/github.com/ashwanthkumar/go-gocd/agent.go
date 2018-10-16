@@ -2,6 +2,7 @@ package gocd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -9,15 +10,15 @@ import (
 
 // Agent Object
 type Agent struct {
-	UUID             string `json:"uuid,omitempty"`
-	Hostname         string `json:"hostname,omitempty"`
-	IPAddress        string `json:"ip_address,omitempty"`
-	Sandbox          string `json:"sandbox,omitempty"`
-	OperatingSystem  string `json:"operating_system,omitempty"`
-	FreeSpace        int    `json:"free_space,omitempty"`
-	AgentConfigState string `json:"agent_config_state,omitempty"`
-	AgentState       string `json:"agent_state,omitempty"`
-	BuildState       string `json:"build_state,omitempty"`
+	UUID             string    `json:"uuid,omitempty"`
+	Hostname         string    `json:"hostname,omitempty"`
+	IPAddress        string    `json:"ip_address,omitempty"`
+	Sandbox          string    `json:"sandbox,omitempty"`
+	OperatingSystem  string    `json:"operating_system,omitempty"`
+	FreeSpace        FreeSpace `json:"free_space,omitempty"`
+	AgentConfigState string    `json:"agent_config_state,omitempty"`
+	AgentState       string    `json:"agent_state,omitempty"`
+	BuildState       string    `json:"build_state,omitempty"`
 	BuildDetails     struct {
 		PipelineName string `json:"pipeline_name,omitempty"`
 		StageName    string `json:"stage_name,omitempty"`
@@ -25,6 +26,31 @@ type Agent struct {
 	} `json:"build_details,omitempty"`
 	Resources []string `json:"resources,omitempty"`
 	Env       []string `json:"environments,omitempty"`
+}
+
+// FreeSpace is required for GoCD API inconsintencies in agent free space scrape.
+type FreeSpace int
+
+// UnmarshalJSON expects an int or string ("unknown").
+func (i *FreeSpace) UnmarshalJSON(data []byte) error {
+	if data == nil {
+		return nil
+	}
+	var js interface{}
+	if err := json.Unmarshal(data, &js); err != nil {
+		return err
+	}
+	switch v := js.(type) {
+	case string:
+		// such as "unknown"
+		*i = -1
+	case float64:
+		*i = FreeSpace(v)
+	default:
+		fmt.Print(js)
+		return errors.New("FreeSpace: unexpected type")
+	}
+	return nil
 }
 
 // GetAllAgents - Lists all available agents, these are agents that are present in the <agents/> tag inside cruise-config.xml and also agents that are in Pending state awaiting registration.
@@ -62,7 +88,7 @@ func (c *DefaultClient) GetAgent(uuid string) (*Agent, error) {
 
 	_, body, errs := c.Request.
 		Get(c.resolve(fmt.Sprintf("/go/api/agents/%s", uuid))).
-		Set("Accept", "application/vnd.go.cd.v2+json").
+		Set("Accept", "application/vnd.go.cd.v4+json").
 		End()
 	errors = multierror.Append(errors, errs...)
 	if errs != nil {
@@ -85,7 +111,7 @@ func (c *DefaultClient) UpdateAgent(uuid string, agent *Agent) (*Agent, error) {
 
 	_, body, errs := c.Request.
 		Patch(c.resolve(fmt.Sprintf("/go/api/agents/%s", uuid))).
-		Set("Accept", "application/vnd.go.cd.v2+json").
+		Set("Accept", "application/vnd.go.cd.v4+json").
 		SendStruct(agent).
 		End()
 	multierror.Append(errors, errs...)
@@ -128,7 +154,7 @@ func (c *DefaultClient) DeleteAgent(uuid string) error {
 
 	_, _, errs := c.Request.
 		Delete(c.resolve(fmt.Sprintf("/go/api/agents/%s", uuid))).
-		Set("Accept", "application/vnd.go.cd.v2+json").
+		Set("Accept", "application/vnd.go.cd.v4+json").
 		End()
 	if len(errs) > 0 {
 		errors = multierror.Append(errors, errs...)
@@ -141,6 +167,8 @@ func (c *DefaultClient) AgentRunJobHistory(uuid string, offset int) ([]*JobHisto
 	var errors *multierror.Error
 	_, body, errs := c.Request.
 		Get(c.resolve(fmt.Sprintf("/go/api/agents/%s/job_run_history/%d", uuid, offset))).
+		// 18.6.0: providing API version here results in "resource not found"
+		Set("Accept", "application/json").
 		End()
 	if errs != nil {
 		errors = multierror.Append(errors, errs...)
