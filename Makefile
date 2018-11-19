@@ -11,3 +11,4 @@ release: docker
 
 .PHONY: deps
 deps:
+	dep ensure -update
