@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  branch = "fix/api"
-  digest = "1:a7d35d64953972af7b4672ef2654cd27e9ab141e5e3811c77226c64f0af4330b"
+  branch = "fix/get-jobs-panic"
+  digest = "1:8ee72f31c8618f5d8fe98a501d3be410e126fe6080b109a0d4a52f41846238b6"
   name = "github.com/ashwanthkumar/go-gocd"
   packages = ["."]
   pruneopts = "UT"
-  revision = "0aae696f5008afc9b9d770fbe8d2fe615479f20c"
+  revision = "fadef84d5167b6c723fef68a128c1dd59f6079a1"
   source = "github.com/balboah/go-gocd"
 
 [[projects]]
@@ -51,12 +51,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
   digest = "1:7aefb397a53fc437c90f0fdb3e1419c751c5a3a165ced52325d5d797edf1aca6"
   name = "github.com/moul/http2curl"
   packages = ["."]
   pruneopts = "UT"
   revision = "9ac6cf4d929b2fa8fd2d2e6dec5bb0feb4f4911d"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:d776f3e95774a8719f2e57fabbbb33103035fe072dcf6f1864f33abd17b753e5"
@@ -75,7 +75,7 @@
   version = "v0.8.0"
 
 [[projects]]
-  digest = "1:20a8a18488bdef471795af0413d9a3c9c35dc24ca93342329b884ba3c15cbaab"
+  digest = "1:26663fafdea73a38075b07e8e9d82fc0056379d2be8bb4e13899e8fda7c7dd23"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
@@ -83,8 +83,8 @@
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "1cafe34db7fdec6022e17e00e1c1ea501022f3e4"
-  version = "v0.9.0"
+  revision = "abad2d1bd44235a26707c172eab6bca5bf2dbad3"
+  version = "v0.9.1"
 
 [[projects]]
   branch = "master"
@@ -96,7 +96,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c0d39a0cad193ac49b6e24516e0f994b241d7c27142e5a58e8bd13defb2d9ac8"
+  digest = "1:db712fde5d12d6cdbdf14b777f0c230f4ff5ab0be8e35b239fc319953ed577a4"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -104,7 +104,7 @@
     "model",
   ]
   pruneopts = "UT"
-  revision = "bcb74de08d37a417cb6789eec1d6c810040f0470"
+  revision = "1f2c4f3cd6db5fd6f68f36af6b6d5d936fd93c4e"
 
 [[projects]]
   branch = "master"
@@ -121,14 +121,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a412caf33b5d3c7938c28e1e745c10664bd180277b73ab3b34c0c467886f9969"
+  digest = "1:e56a91f64003cb1bf7fed334ba2615d9750991d4570d5254a7cdbeac3374d546"
   name = "golang.org/x/net"
   packages = [
     "idna",
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "49bb7cea24b1df9410e1712aa6433dae904ff66a"
+  revision = "adae6a3d119ae4890b46832a2e88a95adc62b8e7"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"

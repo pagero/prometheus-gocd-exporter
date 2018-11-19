@@ -28,7 +28,7 @@ type Agent struct {
 	Env       []string `json:"environments,omitempty"`
 }
 
-// FreeSpace is required for GoCD API inconsintencies in agent free space scrape.
+// FreeSpace is required for GoCD API inconsistencies in agent free space scrape.
 type FreeSpace int
 
 // UnmarshalJSON expects an int or string ("unknown").
@@ -47,7 +47,6 @@ func (i *FreeSpace) UnmarshalJSON(data []byte) error {
 	case float64:
 		*i = FreeSpace(v)
 	default:
-		fmt.Print(js)
 		return errors.New("FreeSpace: unexpected type")
 	}
 	return nil
