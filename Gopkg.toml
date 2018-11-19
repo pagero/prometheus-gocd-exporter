@@ -26,7 +26,7 @@
 
 [[constraint]]
   name = "github.com/ashwanthkumar/go-gocd"
-  branch = "fix/api"
+  branch = "fix/get-jobs-panic"
   source = "github.com/balboah/go-gocd"
 
 [prune]
