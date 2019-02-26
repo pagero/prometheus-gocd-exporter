@@ -5,6 +5,10 @@ TAG?=latest
 docker: deps
 	docker build -t $(IMAGE):$(TAG) .
 
+.PHONY: test
+test: deps
+	go test -v
+
 .PHONY: release
 release: docker
 	docker push $(IMAGE):$(TAG)

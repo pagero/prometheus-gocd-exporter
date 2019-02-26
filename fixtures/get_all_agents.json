@@ -1,0 +1,59 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://ci.example.com/go/api/agents"
+    },
+    "doc": {
+      "href": "https://api.gocd.org/#agents"
+    }
+  },
+  "_embedded": {
+    "agents": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://ci.example.com/go/api/agents/adb9540a-b954-4571-9d9b-2f330739d4da"
+          },
+          "doc": {
+            "href": "https://api.gocd.org/#agents"
+          },
+          "find": {
+            "href": "https://ci.example.com/go/api/agents/:uuid"
+          }
+        },
+        "uuid": "123",
+        "hostname": "fooagent"
+      },
+      {
+        "_links": {
+          "self": {
+            "href": "https://ci.example.com/go/api/agents/adb9540a-b954-4571-9d9b-2f330739d4da"
+          },
+          "doc": {
+            "href": "https://api.gocd.org/#agents"
+          },
+          "find": {
+            "href": "https://ci.example.com/go/api/agents/:uuid"
+          }
+        },
+        "uuid": "456",
+        "hostname": "baragent"
+      },
+      {
+        "_links": {
+          "self": {
+            "href": "https://ci.example.com/go/api/agents/adb9540a-b954-4571-9d9b-2f330739d4da"
+          },
+          "doc": {
+            "href": "https://api.gocd.org/#agents"
+          },
+          "find": {
+            "href": "https://ci.example.com/go/api/agents/:uuid"
+          }
+        },
+        "uuid": "789",
+        "hostname": "bazagent"
+      }
+    ]
+  }
+}

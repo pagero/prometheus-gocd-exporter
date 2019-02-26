@@ -13,11 +13,12 @@ import (
 
 // Config for the Scraper.
 type Config struct {
-	Namespace  string
-	Registerer prometheus.Registerer
-	GocdURL    string
-	GocdUser   string
-	GocdPass   string
+	Namespace     string
+	Registerer    prometheus.Registerer
+	GocdURL       string
+	GocdUser      string
+	GocdPass      string
+	AgentMaxPages int
 }
 
 // Scraper runs one scrape loop for collecting metrics.
@@ -26,6 +27,7 @@ type Scraper func(context.Context) error
 // NewScraper configures prometheus metrics to be scraped from GoCD.
 func NewScraper(conf *Config) (Scraper, error) {
 	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
+	agentJobHistoryCache := NewAgentJobHistoryCache()
 
 	scrapers := []Scraper{}
 	add := func(c []prometheus.Collector, s Scraper) error {
@@ -38,7 +40,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 		return nil
 	}
 
-	if err := add(newAgentCollector(conf)); err != nil {
+	if err := add(newAgentCollector(conf, agentJobHistoryCache)); err != nil {
 		return nil, err
 	}
 	if err := add(newScheduledCollector(conf)); err != nil {
@@ -287,7 +289,15 @@ func newPipelineDurationCollector(conf *Config, ccCache *CCTrayCache) (
 	}
 }
 
-func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
+func newAgentCollector(conf *Config, agentJobHistoryCache *AgentJobHistoryCache) ([]prometheus.Collector, Scraper) {
+	agentJobResultCounter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: conf.Namespace,
+			Name:      "agent_job_results",
+			Help:      "Aggregated sum of job results per agent",
+		},
+		[]string{"agent", "pipeline", "stage", "job", "result"},
+	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
@@ -331,7 +341,7 @@ func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge}, func(ctx context.Context) error {
+	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
 			return err
@@ -379,6 +389,10 @@ func newAgentCollector(conf *Config) ([]prometheus.Collector, Scraper) {
 		agentJobGauge.Reset()
 		for _, stats := range jobStats {
 			agentJobGauge.WithLabelValues(stats...).Set(1)
+		}
+
+		if err := agentJobHistory(client, agents, agentJobResultCounter, agentJobHistoryCache, conf.AgentMaxPages); err != nil {
+			return err
 		}
 
 		return nil

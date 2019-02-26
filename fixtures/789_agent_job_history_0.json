@@ -1,0 +1,17 @@
+{
+  "jobs": [
+    {
+      "agent_uuid": "789",
+      "pipeline_name": "distributions-all",
+      "result": "Passed",
+      "id": 2,
+      "name": "jobname",
+      "stage_name": "stagename"
+    }
+  ],
+  "pagination": {
+    "offset": 0,
+    "total": 2,
+    "page_size": 1
+  }
+}

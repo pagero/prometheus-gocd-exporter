@@ -16,7 +16,6 @@ func TestCCTrayParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(cc)
 
 	if n := len(cc.Projects); n != 3 {
 		t.Error("invalid length", n)
@@ -35,5 +34,7 @@ func TestCCTrayParse(t *testing.T) {
 	if p.LastResult != "Success" {
 		t.Error("invalid LastResult")
 	}
-
+	if n := p.Job(); n != "defaultJob" {
+		t.Error("Expected 'defaultJob' got", n)
+	}
 }

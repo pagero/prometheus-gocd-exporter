@@ -28,6 +28,9 @@ func main() {
 		"gocdUser", env("GOCD_USER", "admin"), "GoCD dashboard user login")
 	passwd := flag.String(
 		"gocdPass", env("GOCD_PASS", "badger"), "GoCD dashboard user password")
+	agentMaxPages := flag.Int(
+		"maxPages", 3, "Agent job history maximum number of pages to parse")
+
 	flag.Parse()
 
 	ln, err := net.Listen("tcp", *addr)
@@ -47,7 +50,7 @@ func main() {
 	go func() {
 		defer cancel()
 		scrape, err := gocdexporter.NewScraper(&gocdexporter.Config{
-			*ns, prometheus.DefaultRegisterer, *url, *user, *passwd,
+			*ns, prometheus.DefaultRegisterer, *url, *user, *passwd, *agentMaxPages,
 		})
 		if err != nil {
 			log.Fatal(err)
