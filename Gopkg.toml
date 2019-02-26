@@ -24,10 +24,11 @@
 #   go-tests = true
 #   unused-packages = true
 
+# remove when/if https://github.com/ashwanthkumar/go-gocd/pull/13 has been merged
 [[constraint]]
-  name = "github.com/ashwanthkumar/go-gocd"
-  branch = "fix/get-jobs-panic"
-  source = "github.com/balboah/go-gocd"
+  name = "github.com/igno/go-gocd"
+  branch = "agent-job-run-history-pagination"
+  source = "github.com/igno/go-gocd"
 
 [prune]
   go-tests = true
