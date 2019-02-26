@@ -127,3 +127,13 @@ func (p CCTrayProject) Instance() int64 {
 	}
 	return -1
 }
+
+// Job extracted from name attribute
+func (p CCTrayProject) Job() string {
+	parts := strings.Split(p.Name, " :: ")
+
+	if len(parts) > 2 {
+		return parts[2]
+	}
+	return ""
+}
