@@ -1,0 +1,17 @@
+{
+  "jobs": [
+    {
+      "agent_uuid": "789",
+      "pipeline_name": "distributions-all",
+      "result": "Failed",
+      "id": 1,
+      "name": "jobname",
+      "stage_name": "stagename"
+    }
+  ],
+  "pagination": {
+    "offset": 1,
+    "total": 2,
+    "page_size": 1
+  }
+}

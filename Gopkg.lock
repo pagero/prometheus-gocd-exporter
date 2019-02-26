@@ -2,6 +2,15 @@
 
 
 [[projects]]
+  branch = "agent-job-run-history-pagination"
+  digest = "1:7e2a89de5d89884193960aad62db6b19d21f2ada5cfa5b99cd931f1caac3c46f"
+  name = "github.com/ashwanthkumar/go-gocd"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "54f553e95bb19c342b2b2577eec2255b3f4a8dcb"
+  source = "github.com/igno/go-gocd"
+
+[[projects]]
   branch = "master"
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
   name = "github.com/beorn7/perks"
@@ -32,15 +41,6 @@
   pruneopts = "UT"
   revision = "886a7fbe3eb1c874d46f623bfa70af45f425b3d1"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "agent-job-run-history-pagination"
-  digest = "1:7e2a89de5d89884193960aad62db6b19d21f2ada5cfa5b99cd931f1caac3c46f"
-  name = "github.com/igno/go-gocd"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "54f553e95bb19c342b2b2577eec2255b3f4a8dcb"
-  source = "github.com/igno/go-gocd"
 
 [[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
@@ -158,7 +158,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/igno/go-gocd",
+    "github.com/ashwanthkumar/go-gocd",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
   ]
