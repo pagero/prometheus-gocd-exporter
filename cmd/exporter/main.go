@@ -57,6 +57,16 @@ func main() {
 		}
 		ticker := time.NewTicker(dur)
 		defer ticker.Stop()
+		errorGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "exporter",
+				Name:      "scrape_error",
+				Help:      "prometheus-gocd-exporter scrape error",
+			},
+			[]string{})
+		if err := prometheus.DefaultRegisterer.Register(errorGauge); err != nil {
+			log.Fatal(err)
+		}
 
 		trigger := func(ctx context.Context, now time.Time) {
 			select {
@@ -65,13 +75,16 @@ func main() {
 			}
 			ctx, cancel := context.WithDeadline(ctx, now.Add(dur))
 			defer cancel()
+			errorGauge.Reset()
+			errorGauge.WithLabelValues().Set(0)
 			if err := scrape(ctx); err != nil {
 				switch err {
 				case context.DeadlineExceeded:
 					log.Println(err)
 				default:
-					log.Fatal(err)
+					log.Println(err)
 				}
+				errorGauge.WithLabelValues().Set(1)
 			}
 		}
 
