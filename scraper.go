@@ -27,7 +27,7 @@ type Scraper func(context.Context) error
 // NewScraper configures prometheus metrics to be scraped from GoCD.
 func NewScraper(conf *Config) (Scraper, error) {
 	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	agentJobHistoryCache := NewAgentJobHistoryCache()
+	agentJobHistoryCache := AgentJobHistoryCache{}
 
 	scrapers := []Scraper{}
 	add := func(c []prometheus.Collector, s Scraper) error {
@@ -168,7 +168,6 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 				return ctx.Err()
 			default:
 			}
-			log.Printf("pipelines_result: Project: %s - %s\n", project.Name, project.URL)
 
 			r, ok := pipelineResults[project.Pipeline()]
 			if !ok {
@@ -188,7 +187,6 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 				).Add(float64(project.Instance() - c))
 			}
 
-			log.Printf("pipelines_result:\tStage: %s - Result: %s\n", project.Stage(), project.LastResult)
 		}
 
 		pipelineResultGauge.Reset()
@@ -289,7 +287,7 @@ func newPipelineDurationCollector(conf *Config, ccCache *CCTrayCache) (
 	}
 }
 
-func newAgentCollector(conf *Config, agentJobHistoryCache *AgentJobHistoryCache) ([]prometheus.Collector, Scraper) {
+func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) ([]prometheus.Collector, Scraper) {
 	agentJobResultCounter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: conf.Namespace,
@@ -297,6 +295,14 @@ func newAgentCollector(conf *Config, agentJobHistoryCache *AgentJobHistoryCache)
 			Help:      "Aggregated sum of job results per agent",
 		},
 		[]string{"agent", "pipeline", "stage", "job", "result"},
+	)
+	agentJobDurationGauge := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "agent_job_state_duration_seconds",
+			Help:      "job state transition durations - Limitations: running the exporter with a longer scrape interval could make this metric being overwritten if a job is run on the same agent several times within the scrape interval period.",
+		},
+		[]string{"state", "agent", "pipeline", "stage", "job"},
 	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -341,7 +347,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache *AgentJobHistoryCache)
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter}, func(ctx context.Context) error {
+	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter, agentJobDurationGauge}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
 			return err
@@ -391,10 +397,32 @@ func newAgentCollector(conf *Config, agentJobHistoryCache *AgentJobHistoryCache)
 			agentJobGauge.WithLabelValues(stats...).Set(1)
 		}
 
-		if err := agentJobHistory(client, agents, agentJobResultCounter, agentJobHistoryCache, conf.AgentMaxPages); err != nil {
+		ajh := &AgentJobHistory{}
+		if err := ajh.GetJobHistory(client, agents, agentJobHistoryCache, conf.AgentMaxPages); err != nil {
 			return err
 		}
 
+		agentJobDurationGauge.Reset()
+		for _, a := range agents {
+			if _, hasJobs := ajh.AgentJobHistory[a.Hostname]; !hasJobs {
+				continue
+			}
+			for _, jobHistory := range ajh.AgentJobHistory[a.Hostname] {
+				agentJobResultCounter.WithLabelValues(
+					a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+				).Inc()
+
+				transitions := jobHistory.JobStateTransitions
+				prevTime := jobHistory.ScheduledDate
+				for _, t := range transitions {
+					duration := (t.StateChangeTime - prevTime) / 1000
+					agentJobDurationGauge.WithLabelValues(
+						t.State, a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name,
+					).Set(float64(duration))
+					prevTime = t.StateChangeTime
+				}
+			}
+		}
 		return nil
 	}
 }
