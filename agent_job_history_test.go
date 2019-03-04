@@ -1,44 +1,57 @@
 package gocdexporter
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/ashwanthkumar/go-gocd"
 	"testing"
 )
 
-func TestAgentJobHistoryStats(t *testing.T) {
-	agentJobCounter := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "agent_job_results",
-		},
-		[]string{"agent", "pipeline", "stage", "job", "result"},
-	)
-	cache := NewAgentJobHistoryCache()
+func TestGetJobHistory(t *testing.T) {
+	a := &AgentJobHistory{}
+	cache := AgentJobHistoryCache{}
 	client := &MockClient{}
 	agents, _ := client.GetAllAgents()
-	err := agentJobHistory(client, agents, agentJobCounter, cache, 2)
+
+	err := a.GetJobHistory(client, agents, cache, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cache.Get("fooagent") != 2 {
-		t.Fatal("expected last job in cache to be 2")
-	}
-	if cache.Get("baragent") != 0 {
-		t.Fatal("expected last job in cache to be 0")
-	}
-	if cache.Get("bazagent") != 2 {
-		t.Fatal("expected last job in cache to be 2")
-	}
-}
 
-func TestCache(t *testing.T) {
-	cache := NewAgentJobHistoryCache()
-	cache.Set("fooagent", 1)
-	job := cache.Get("fooagent")
-	if job != 1 {
-		t.Fatal("expected cached job")
+	//standard case
+	jh1 := a.AgentJobHistory["fooagent"]
+	if len(jh1) != 2 {
+		t.Fatal("Expected job history for two agents")
 	}
-	miss := cache.Get("baragent")
-	if miss != 0 {
-		t.Fatal("expected no cache hit")
+	if jh1[0].ID != 2 {
+		t.Fatal("Unexpected job id")
+	}
+	if jh1[1].ID != 1 {
+		t.Fatal("Unexpected job id")
+	}
+
+	//test empty job list
+	if _, ok := a.AgentJobHistory["baragent"]; ok {
+		t.Fatal("Expected baragent to not have any jobs")
+	}
+
+	//test pagination
+	jh2 := a.AgentJobHistory["bazagent"]
+	if len(jh2) != 1 {
+		t.Fatal("Expected bazagent to only have one job")
+	}
+	if jh2[0].ID != 2 {
+		t.Fatal("Unexpected job id")
+	}
+
+	//test already cached job for agent
+	agent := &gocd.Agent{Hostname: "foobaragent", UUID: "111"}
+	newAgents := []*gocd.Agent{agent}
+	cache["foobaragent"] = 1
+	_ = a.GetJobHistory(client, newAgents, cache, 1)
+	jh3 := a.AgentJobHistory["foobaragent"]
+	if len(jh3) != 1 {
+		t.Fatal("Expected foobaragent to only have one job")
+	}
+	if jh3[0].ID != 2 {
+		t.Fatal("Unexpected job id")
 	}
 }

@@ -1,0 +1,25 @@
+{
+  "jobs": [
+    {
+      "agent_uuid": "111",
+      "name": "upload",
+      "pipeline_name": "distributions-all",
+      "result": "Passed",
+      "id": 2,
+      "stage_name": "upload-installers"
+    },
+    {
+      "agent_uuid": "111",
+      "name": "upload",
+      "pipeline_name": "distributions-all",
+      "result": "Failed",
+      "id": 1,
+      "stage_name": "upload-installers"
+    }
+  ],
+  "pagination": {
+    "offset": 0,
+    "total": 2,
+    "page_size": 10
+  }
+}

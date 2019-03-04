@@ -2,39 +2,29 @@ package gocdexporter
 
 import (
 	"github.com/ashwanthkumar/go-gocd"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
-type AgentJobHistoryCache struct {
-	AgentJob map[string]int
+type AgentJobHistoryCache map[string]int
+
+type AgentJobHistory struct {
+	AgentJobHistory map[string][]*gocd.JobHistory
 }
 
-func NewAgentJobHistoryCache() *AgentJobHistoryCache {
-	return &AgentJobHistoryCache{}
-}
-
-func (c *AgentJobHistoryCache) Get(agentHostname string) int {
-	if job, ok := c.AgentJob[agentHostname]; ok {
-		return job
+func (a *AgentJobHistory) Add(agent string, jobHistory *gocd.JobHistory) {
+	if len(a.AgentJobHistory) == 0 {
+		a.AgentJobHistory = make(map[string][]*gocd.JobHistory)
 	}
-	return 0
+	a.AgentJobHistory[agent] = append(a.AgentJobHistory[agent], jobHistory)
 }
 
-func (c *AgentJobHistoryCache) Set(agentHostname string, job int) {
-	if len(c.AgentJob) == 0 {
-		c.AgentJob = make(map[string]int)
-	}
-	c.AgentJob[agentHostname] = job
-}
-
-func agentJobHistory(client gocd.Client, agents []*gocd.Agent, agentJobResultCounter *prometheus.CounterVec, cache *AgentJobHistoryCache, maxPages int) error {
+func (a *AgentJobHistory) GetJobHistory(client gocd.Client, agents []*gocd.Agent, cache AgentJobHistoryCache, maxPages int) error {
 	for _, agent := range agents {
 		offset := 0
 		total := 1
 		pageSize := 1
 		firstRun := false
 		for offset/pageSize < maxPages && offset < total {
-			cachedJobID := cache.Get(agent.Hostname)
+			cachedJobID := cache[agent.Hostname]
 			if cachedJobID == 0 {
 				firstRun = true
 			}
@@ -46,15 +36,13 @@ func agentJobHistory(client gocd.Client, agents []*gocd.Agent, agentJobResultCou
 			pageSize = history.Pagination.PageSize
 			total = history.Pagination.Total
 			if len(jobs) > 0 && jobs[0].ID > cachedJobID {
-				cache.Set(agent.Hostname, jobs[0].ID)
+				cache[agent.Hostname] = jobs[0].ID
 			}
 			for _, job := range jobs {
 				if cachedJobID >= job.ID && !firstRun {
 					break
 				}
-				agentJobResultCounter.WithLabelValues(
-					agent.Hostname, job.PipelineName, job.StageName, job.Name, job.Result,
-				).Inc()
+				a.Add(agent.Hostname, job)
 			}
 			if !firstRun {
 				break
