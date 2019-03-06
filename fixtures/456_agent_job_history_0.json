@@ -5,6 +5,6 @@
   "pagination": {
     "offset": 0,
     "total": 0,
-    "page_size": 10
+    "page_size": 0
   }
 }
