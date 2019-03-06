@@ -23,7 +23,7 @@ func (a *AgentJobHistory) GetJobHistory(client gocd.Client, agents []*gocd.Agent
 		total := 1
 		pageSize := 1
 		firstRun := false
-		for offset/pageSize < maxPages && offset < total {
+		for pageSize > 0 && offset/pageSize < maxPages && offset < total {
 			cachedJobID := cache[agent.Hostname]
 			if cachedJobID == 0 {
 				firstRun = true
