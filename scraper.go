@@ -302,7 +302,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 			Name:      "agent_job_state_duration_seconds",
 			Help:      "job state transition durations - Limitations: running the exporter with a longer scrape interval could make this metric being overwritten if a job is run on the same agent several times within the scrape interval period.",
 		},
-		[]string{"state", "agent", "pipeline", "stage", "job"},
+		[]string{"state", "agent", "pipeline", "stage", "job", "result"},
 	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -417,7 +417,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 				for _, t := range transitions {
 					duration := (t.StateChangeTime - prevTime) / 1000
 					agentJobDurationGauge.WithLabelValues(
-						t.State, a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name,
+						t.State, a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 					).Set(float64(duration))
 					prevTime = t.StateChangeTime
 				}
