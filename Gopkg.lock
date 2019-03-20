@@ -2,13 +2,12 @@
 
 
 [[projects]]
-  branch = "agent-job-run-history-pagination"
+  branch = "master"
   digest = "1:7e2a89de5d89884193960aad62db6b19d21f2ada5cfa5b99cd931f1caac3c46f"
   name = "github.com/ashwanthkumar/go-gocd"
   packages = ["."]
   pruneopts = "UT"
-  revision = "54f553e95bb19c342b2b2577eec2255b3f4a8dcb"
-  source = "github.com/igno/go-gocd"
+  revision = "0ff028db2414767423adc428ef3e92a0eff3e1ea"
 
 [[projects]]
   branch = "master"
@@ -23,8 +22,8 @@
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
-  version = "v1.3.0"
+  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:0ade334594e69404d80d9d323445d2297ff8161637f9b2d347cc6973d2d6f05b"
@@ -108,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:01cd0cd47758f04c5604daa3be4637e2afa1e0c15af7e08289e95360369e4f48"
+  digest = "1:c31163bd62461e0c5f7ddc7363e39ef8d9e929693e77b5c11c709b05f9cb9219"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -118,7 +117,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "d0f344d83b0c80a1bc03b547a2374a9ec6711144"
+  revision = "40f3c57fb1983891f95378042bd0bfd590f52384"
 
 [[projects]]
   branch = "master"
@@ -129,7 +128,7 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "5c2c250b6a70e39b74bb544433a348a892b10530"
+  revision = "1272bf9dcd53ea65c09668fb4c76e65deb740072"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
