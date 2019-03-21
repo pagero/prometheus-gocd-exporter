@@ -5,5 +5,5 @@ workflow "Run tests on push" {
 
 action "test" {
   uses = "cedrickring/golang-action@1.1.1"
-  args = "make test"
+  args = "go test -v"
 }
