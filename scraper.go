@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashwanthkumar/go-gocd"
+	gocd "github.com/ashwanthkumar/go-gocd"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -304,11 +304,11 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 		},
 		[]string{"state", "agent", "pipeline", "stage", "job", "result"},
 	)
-	agentCountGauge := prometheus.NewGaugeVec(
+	agentStateGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
-			Name:      "agent_count",
-			Help:      "Number of agents",
+			Name:      "agent_state",
+			Help:      "State for each agent",
 		},
 		[]string{
 			// Idle, Building, Cancelled, Unknown.
@@ -347,16 +347,16 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter, agentJobDurationGauge}, func(ctx context.Context) error {
+	return []prometheus.Collector{agentStateGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter, agentJobDurationGauge}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
 			return err
 		}
 		// Quick stats first
-		agentCountGauge.Reset()
+		agentStateGauge.Reset()
 		for _, a := range agents {
-			agentCountGauge.WithLabelValues(
-				a.BuildState, a.AgentState, a.AgentConfigState,
+			agentStateGauge.WithLabelValues(
+				a.BuildState, a.AgentState, a.AgentConfigState, a.Hostname,
 			).Add(1)
 		}
 		agentFreeSpaceGauge.Reset()
