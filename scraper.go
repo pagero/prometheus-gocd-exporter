@@ -318,7 +318,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 			// Pending, Enabled, Disabled.
 			"agent_config_state",
 			// (Host)name of the agent.
-			"agent"
+			"agent",
 		},
 	)
 	agentJobGauge := prometheus.NewGaugeVec(
