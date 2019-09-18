@@ -28,6 +28,7 @@ type Scraper func(context.Context) error
 func NewScraper(conf *Config) (Scraper, error) {
 	ccCache := NewCCTrayCache(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 	agentJobHistoryCache := AgentJobHistoryCache{}
+	pipelineGroups := PipelineGroups{}
 
 	scrapers := []Scraper{}
 	add := func(c []prometheus.Collector, s Scraper) error {
@@ -40,13 +41,13 @@ func NewScraper(conf *Config) (Scraper, error) {
 		return nil
 	}
 
-	if err := add(newAgentCollector(conf, agentJobHistoryCache)); err != nil {
+	if err := add(newAgentCollector(conf, agentJobHistoryCache, pipelineGroups)); err != nil {
 		return nil, err
 	}
-	if err := add(newScheduledCollector(conf)); err != nil {
+	if err := add(newScheduledCollector(conf, pipelineGroups)); err != nil {
 		return nil, err
 	}
-	if err := add(newPipelineResultCollector(conf, ccCache)); err != nil {
+	if err := add(newPipelineResultCollector(conf, ccCache, pipelineGroups)); err != nil {
 		return nil, err
 	}
 	if err := add(newPipelineDurationCollector(conf, ccCache)); err != nil {
@@ -72,7 +73,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newScheduledCollector(conf *Config) (
+func newScheduledCollector(conf *Config, pipelineGroups PipelineGroups) (
 	[]prometheus.Collector, Scraper,
 ) {
 	scheduledGauge := prometheus.NewGaugeVec(
@@ -83,6 +84,7 @@ func newScheduledCollector(conf *Config) (
 		},
 		[]string{
 			"pipeline",
+			"pipeline_group",
 			"stage",
 			"job",
 		},
@@ -101,8 +103,12 @@ func newScheduledCollector(conf *Config) (
 			if len(parts) != 5 {
 				return errors.New("scheduledCollector: unexpected scheduled build locator")
 			}
+			pipelineGroup, err := pipelineGroups.GetPipelineGroup(client, parts[0])
+			if err != nil {
+				return err
+			}
 			scheduledGauge.WithLabelValues(
-				parts[0], parts[2], parts[4],
+				parts[0], pipelineGroup, parts[2], parts[4],
 			).Set(1)
 		}
 
@@ -110,7 +116,7 @@ func newScheduledCollector(conf *Config) (
 	}
 }
 
-func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
+func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGroups PipelineGroups) (
 	[]prometheus.Collector, Scraper,
 ) {
 	pipelineResultGauge := prometheus.NewGaugeVec(
@@ -121,6 +127,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		},
 		[]string{
 			"pipeline",
+			"pipeline_group",
 			"stage",
 			"result",
 		},
@@ -134,6 +141,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		},
 		[]string{
 			"pipeline",
+			"pipeline_group",
 			"stage",
 		},
 	)
@@ -151,6 +159,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 	// is displayed in cctray.
 	buildsCountCache := map[string]int64{}
 	collectors := []prometheus.Collector{pipelineResultGauge, flappingResultGauge, buildsCount}
+	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
 	return collectors, func(ctx context.Context) error {
 		cc, err := ccCache.Get(ctx)
@@ -192,16 +201,20 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache) (
 		pipelineResultGauge.Reset()
 		flappingResultGauge.Reset()
 		for pipeline, stages := range pipelineResults {
+			pipelineGroup, err := pipelineGroups.GetPipelineGroup(client, pipeline)
+			if err != nil {
+				return err
+			}
 			for stage, result := range stages {
 				pipelineResultGauge.WithLabelValues(
-					pipeline, stage, result,
+					pipeline, pipelineGroup, stage, result,
 				).Set(1)
 				resultAsValue := 0.0
 				if result == "Success" {
 					resultAsValue = 1.0
 				}
 				flappingResultGauge.WithLabelValues(
-					pipeline, stage,
+					pipeline, pipelineGroup, stage,
 				).Set(resultAsValue)
 			}
 		}
@@ -287,14 +300,14 @@ func newPipelineDurationCollector(conf *Config, ccCache *CCTrayCache) (
 	}
 }
 
-func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) ([]prometheus.Collector, Scraper) {
+func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, pipelineGroups PipelineGroups) ([]prometheus.Collector, Scraper) {
 	agentJobResultCounter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: conf.Namespace,
 			Name:      "agent_job_results",
 			Help:      "Aggregated sum of job results per agent",
 		},
-		[]string{"agent", "pipeline", "stage", "job", "result"},
+		[]string{"agent", "pipeline", "pipeline_group", "stage", "job", "result"},
 	)
 	agentJobDurationGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -302,7 +315,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 			Name:      "agent_job_state_duration_seconds",
 			Help:      "job state transition durations - Limitations: running the exporter with a longer scrape interval could make this metric being overwritten if a job is run on the same agent several times within the scrape interval period.",
 		},
-		[]string{"state", "agent", "pipeline", "stage", "job", "result"},
+		[]string{"state", "agent", "pipeline", "pipeline_group", "stage", "job", "result"},
 	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -326,6 +339,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 			Help:      "Assigned jobs",
 		},
 		[]string{
+			"pipeline_group",
 			"pipeline",
 			"stage",
 			"job",
@@ -387,11 +401,16 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 			if job.ReRun {
 				rerun = "yes"
 			}
+			pGroup, err := pipelineGroups.GetPipelineGroup(client, job.PipelineName)
+			if err != nil {
+				return err
+			}
 			jobStats = append(jobStats, []string{
-				job.PipelineName, job.StageName, job.Name,
+				pGroup, job.PipelineName, job.StageName, job.Name,
 				rerun, job.State, job.Result, a.Hostname,
 			})
 		}
+
 		agentJobGauge.Reset()
 		for _, stats := range jobStats {
 			agentJobGauge.WithLabelValues(stats...).Set(1)
@@ -408,8 +427,13 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 				continue
 			}
 			for _, jobHistory := range ajh.AgentJobHistory[a.Hostname] {
+				pGroup, err := pipelineGroups.GetPipelineGroup(client, jobHistory.PipelineName)
+				if err != nil {
+					return err
+				}
+
 				agentJobResultCounter.WithLabelValues(
-					a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+					a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 				).Inc()
 
 				transitions := jobHistory.JobStateTransitions
@@ -417,7 +441,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache) 
 				for _, t := range transitions {
 					duration := (t.StateChangeTime - prevTime) / 1000
 					agentJobDurationGauge.WithLabelValues(
-						t.State, a.Hostname, jobHistory.PipelineName, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+						t.State, a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 					).Set(float64(duration))
 					prevTime = t.StateChangeTime
 				}

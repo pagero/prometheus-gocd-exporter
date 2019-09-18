@@ -2,12 +2,22 @@ package gocdexporter
 
 import (
 	"encoding/json"
-	"github.com/ashwanthkumar/go-gocd"
 	"io/ioutil"
 	"strconv"
+
+	"github.com/ashwanthkumar/go-gocd"
 )
 
 type MockClient struct {
+	pg []*gocd.PipelineGroup
+}
+
+func NewMockClient() *MockClient {
+	mc := &MockClient{}
+	f, _ := ioutil.ReadFile("fixtures/get_pipeline_groups.json")
+	_ = json.Unmarshal([]byte(string(f)), &mc.pg)
+
+	return mc
 }
 
 func (c *MockClient) GetAllAgents() ([]*gocd.Agent, error) {
@@ -44,8 +54,9 @@ func (c *MockClient) AgentRunJobHistory(uuid string, offset int) (*gocd.JobRunHi
 	_ = json.Unmarshal([]byte(string(f)), &h)
 	return h, nil
 }
+
 func (c *MockClient) GetPipelineGroups() ([]*gocd.PipelineGroup, error) {
-	return nil, nil
+	return c.pg, nil
 }
 func (c *MockClient) GetPipelineInstance(string, int) (*gocd.PipelineInstance, error) {
 	return nil, nil
