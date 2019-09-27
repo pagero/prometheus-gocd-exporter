@@ -1,18 +1,32 @@
 package gocdexporter
 
 import (
+	"sort"
+
 	"github.com/ashwanthkumar/go-gocd"
 )
 
 type AgentJobHistoryCache map[string]int
 
 type AgentJobHistory struct {
-	AgentJobHistory map[string][]*gocd.JobHistory
+	AgentJobHistory map[string][]*JobHistory
 }
 
-func (a *AgentJobHistory) Add(agent string, jobHistory *gocd.JobHistory) {
+type JobHistory struct {
+	*gocd.JobHistory
+}
+
+func (j *JobHistory) GetOrderedStateTransitions() []gocd.JobStateTransition {
+	t := j.JobStateTransitions
+	sort.Slice(t, func(i, j int) bool {
+		return t[i].StateChangeTime < t[j].StateChangeTime
+	})
+	return t
+}
+
+func (a *AgentJobHistory) Add(agent string, jobHistory *JobHistory) {
 	if len(a.AgentJobHistory) == 0 {
-		a.AgentJobHistory = make(map[string][]*gocd.JobHistory)
+		a.AgentJobHistory = make(map[string][]*JobHistory)
 	}
 	a.AgentJobHistory[agent] = append(a.AgentJobHistory[agent], jobHistory)
 }
@@ -42,7 +56,7 @@ func (a *AgentJobHistory) GetJobHistory(client gocd.Client, agents []*gocd.Agent
 				if cachedJobID >= job.ID && !firstRun {
 					break
 				}
-				a.Add(agent.Hostname, job)
+				a.Add(agent.Hostname, &JobHistory{job})
 			}
 			if !firstRun {
 				break
