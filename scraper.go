@@ -436,9 +436,8 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 					a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 				).Inc()
 
-				transitions := jobHistory.JobStateTransitions
 				prevTime := jobHistory.ScheduledDate
-				for _, t := range transitions {
+				for _, t := range jobHistory.GetOrderedStateTransitions() {
 					duration := (t.StateChangeTime - prevTime) / 1000
 					agentJobDurationGauge.WithLabelValues(
 						t.State, a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,

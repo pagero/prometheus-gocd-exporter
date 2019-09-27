@@ -6,7 +6,34 @@
       "result": "Passed",
       "id": 2,
       "name": "jobname",
-      "stage_name": "stagename"
+      "stage_name": "stagename",
+      "job_state_transitions": [
+        {
+          "state": "Building",
+          "state_change_time": 4,
+          "id": 4
+        },
+        {
+          "state": "Scheduled",
+          "state_change_time": 1,
+          "id": 1
+        },
+        {
+          "state": "Assigned",
+          "state_change_time": 2,
+          "id": 2
+        },
+        {
+          "state": "Preparing",
+          "state_change_time": 3,
+          "id": 3
+        },
+        {
+          "state": "Rescheduled",
+          "state_change_time": 5,
+          "id": 5
+        }
+      ]
     }
   ],
   "pagination": {
