@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/ashwanthkumar/go-gocd"
@@ -44,7 +43,7 @@ func NewScraper(conf *Config) (Scraper, error) {
 	if err := add(newAgentCollector(conf, agentJobHistoryCache, pipelineGroups)); err != nil {
 		return nil, err
 	}
-	if err := add(newScheduledCollector(conf, pipelineGroups)); err != nil {
+	if err := add(newScheduledCollector(conf)); err != nil {
 		return nil, err
 	}
 	if err := add(newPipelineResultCollector(conf, ccCache, pipelineGroups)); err != nil {
@@ -73,20 +72,14 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newScheduledCollector(conf *Config, pipelineGroups PipelineGroups) (
+func newScheduledCollector(conf *Config) (
 	[]prometheus.Collector, Scraper,
 ) {
-	scheduledGauge := prometheus.NewGaugeVec(
+	scheduledGauge := prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "jobs_scheduled_count",
 			Help:      "Number of jobs scheduled",
-		},
-		[]string{
-			"pipeline",
-			"pipeline_group",
-			"stage",
-			"job",
 		},
 	)
 
@@ -97,21 +90,7 @@ func newScheduledCollector(conf *Config, pipelineGroups PipelineGroups) (
 		if err != nil {
 			return err
 		}
-		scheduledGauge.Reset()
-		for _, job := range jobs {
-			parts := strings.Split(job.BuildLocator, "/")
-			if len(parts) != 5 {
-				return errors.New("scheduledCollector: unexpected scheduled build locator")
-			}
-			pipelineGroup, err := pipelineGroups.GetPipelineGroup(client, parts[0])
-			if err != nil {
-				return err
-			}
-			scheduledGauge.WithLabelValues(
-				parts[0], pipelineGroup, parts[2], parts[4],
-			).Set(1)
-		}
-
+		scheduledGauge.Set(float64(len(jobs)))
 		return nil
 	}
 }
