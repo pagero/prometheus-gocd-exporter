@@ -50,20 +50,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:7aefb397a53fc437c90f0fdb3e1419c751c5a3a165ced52325d5d797edf1aca6"
-  name = "github.com/moul/http2curl"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9ac6cf4d929b2fa8fd2d2e6dec5bb0feb4f4911d"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:d776f3e95774a8719f2e57fabbbb33103035fe072dcf6f1864f33abd17b753e5"
+  digest = "1:7c56e4e9c4d34167c30636d4b22ac2316d74ce1d14a78bc7a828f03603d410f3"
   name = "github.com/parnurzeal/gorequest"
   packages = ["."]
   pruneopts = "UT"
-  revision = "a578a48e8d6ca8b01a3b18314c43c6716bb5f5a3"
-  version = "v0.2.15"
+  revision = "b735e503d8bf955a72baf89723cdb50ab0bd668c"
+  version = "v0.2.16"
 
 [[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
@@ -126,15 +118,15 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "c8589233b77dde5edd2205ba8a4fb5c9c2472556"
+  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
 
 [[projects]]
   branch = "master"
-  digest = "1:92643c9de3749826f66d081c9cd68ac5eb3942f963b7b0ff408c678fc12b1aff"
+  digest = "1:b77705b6fbee75311610f6def118188979521662a4125f5d3facd18b46035b34"
   name = "golang.org/x/sys"
   packages = ["windows"]
   pruneopts = "UT"
-  revision = "b4ddaad3f8a36719f2b8bc6486c14cc468ca2bb5"
+  revision = "c990c680b611ac1aeb7d8f2af94a825f98d69720"
 
 [[projects]]
   digest = "1:8d8faad6b12a3a4c819a3f9618cb6ee1fa1cfc33253abeeea8b55336721e3405"
@@ -160,6 +152,14 @@
   pruneopts = "UT"
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
   version = "v0.3.2"
+
+[[projects]]
+  digest = "1:dcf3f88f6708650807512eef67b77f7547f992475df5ae6534eeec778cf9744b"
+  name = "moul.io/http2curl"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5cd742060b0e0de91f875277b77dd7d7e68b23ca"
+  version = "v2"
 
 [solve-meta]
   analyzer-name = "dep"
