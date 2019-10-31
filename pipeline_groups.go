@@ -3,7 +3,7 @@ package gocdexporter
 import (
 	"time"
 
-	"github.com/ashwanthkumar/go-gocd"
+	"github.com/pagero/go-gocd-ashwanth"
 )
 
 type PipelineGroups struct {

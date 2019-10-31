@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"github.com/ashwanthkumar/go-gocd"
+	"github.com/pagero/go-gocd-ashwanth"
 )
 
 type MockClient struct {

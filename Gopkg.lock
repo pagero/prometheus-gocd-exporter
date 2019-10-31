@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:7e2a89de5d89884193960aad62db6b19d21f2ada5cfa5b99cd931f1caac3c46f"
-  name = "github.com/ashwanthkumar/go-gocd"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0ff028db2414767423adc428ef3e92a0eff3e1ea"
-
-[[projects]]
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
@@ -48,6 +40,14 @@
   pruneopts = "UT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1b4d7a960cd8c7dd66b6d9d4ce2e3b88a608075bcb80ed945afa4059aa73879f"
+  name = "github.com/pagero/go-gocd-ashwanth"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5f6b987b4dd571815118432962eaa584b24510f6"
 
 [[projects]]
   digest = "1:7c56e4e9c4d34167c30636d4b22ac2316d74ce1d14a78bc7a828f03603d410f3"
@@ -118,15 +118,15 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
+  revision = "fe3aa8a4527195a6057b3fad46619d7d090e99b5"
 
 [[projects]]
   branch = "master"
-  digest = "1:b77705b6fbee75311610f6def118188979521662a4125f5d3facd18b46035b34"
+  digest = "1:5dfb17d45415b7b8927382f53955a66f55f9d9d11557aa82f7f481d642ab247a"
   name = "golang.org/x/sys"
   packages = ["windows"]
   pruneopts = "UT"
-  revision = "c990c680b611ac1aeb7d8f2af94a825f98d69720"
+  revision = "f43be2a4598cf3a47be9f94f0c28197ed9eae611"
 
 [[projects]]
   digest = "1:8d8faad6b12a3a4c819a3f9618cb6ee1fa1cfc33253abeeea8b55336721e3405"
@@ -165,7 +165,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/ashwanthkumar/go-gocd",
+    "github.com/pagero/go-gocd-ashwanth",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
   ]

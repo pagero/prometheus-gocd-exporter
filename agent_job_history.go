@@ -3,7 +3,7 @@ package gocdexporter
 import (
 	"sort"
 
-	"github.com/ashwanthkumar/go-gocd"
+	"github.com/pagero/go-gocd-ashwanth"
 )
 
 type AgentJobHistoryCache map[string]int

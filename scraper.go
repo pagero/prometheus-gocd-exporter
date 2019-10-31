@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/ashwanthkumar/go-gocd"
+	"github.com/pagero/go-gocd-ashwanth"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
