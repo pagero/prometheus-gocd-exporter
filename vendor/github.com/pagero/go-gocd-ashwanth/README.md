@@ -1,6 +1,4 @@
-[![Build Status](https://snap-ci.com/ashwanthkumar/go-gocd/branch/master/build_image)](https://snap-ci.com/ashwanthkumar/go-gocd/branch/master) [![GoDoc](https://godoc.org/github.com/ashwanthkumar/go-gocd?status.svg)](https://godoc.org/github.com/ashwanthkumar/go-gocd)
-
-# go-gocd
+# go-gocd-ashwanth
 
 Go Lang library to access [GoCD API](https://api.go.cd/current/).
 
@@ -9,7 +7,7 @@ Go Lang library to access [GoCD API](https://api.go.cd/current/).
 package main
 
 import (
-  "github.com/ashwanthkumar/go-gocd"
+  "github.com/pagero/go-gocd-ashwanth"
 )
 
 func main() {

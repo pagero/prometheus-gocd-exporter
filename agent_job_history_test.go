@@ -3,7 +3,7 @@ package gocdexporter
 import (
 	"testing"
 
-	"github.com/ashwanthkumar/go-gocd"
+	"github.com/pagero/go-gocd-ashwanth"
 )
 
 func TestGetJobHistory(t *testing.T) {
