@@ -52,6 +52,9 @@ func NewScraper(conf *Config) (Scraper, error) {
 	if err := add(newPipelineDurationCollector(conf, ccCache)); err != nil {
 		return nil, err
 	}
+	if err := add(newServerHealthCollector(conf)); err != nil {
+		return nil, err
+	}
 
 	return func(ctx context.Context) error {
 		if err := ccCache.Update(ctx); err != nil {
@@ -428,6 +431,35 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 				}
 			}
 		}
+		return nil
+	}
+}
+
+func newServerHealthCollector(conf *Config) (
+	[]prometheus.Collector, Scraper,
+) {
+	errorMessagesGauge := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: conf.Namespace,
+			Name:      "error_messages_count",
+			Help:      "Number of error messages.",
+		},
+	)
+
+	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
+
+	return []prometheus.Collector{errorMessagesGauge}, func(ctx context.Context) error {
+		messages, err := client.GetServerHealthMessages()
+		if err != nil {
+			return err
+		}
+		count := 0
+		for _, message := range messages {
+			if message.IsError() {
+				count++
+			}
+		}
+		errorMessagesGauge.Set(float64(count))
 		return nil
 	}
 }
