@@ -88,3 +88,6 @@ func (c *MockClient) GetAllEnvironmentConfigs() ([]*gocd.EnvironmentConfig, erro
 func (c *MockClient) GetEnvironmentConfig(name string) (*gocd.EnvironmentConfig, error) {
 	return nil, nil
 }
+func (c *MockClient) GetServerHealthMessages() ([]*gocd.ServerHealthMessage, error) {
+	return nil, nil
+}
