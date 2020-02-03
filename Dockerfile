@@ -1,4 +1,4 @@
-FROM golang:1.11-alpine3.8 as build
+FROM golang:1.12-alpine3.11 as build
 ARG PACKAGE=github.com/pagero/prometheus-gocd-exporter
 RUN mkdir -p /go/src/${PACKAGE}
 WORKDIR /go/src/${PACKAGE}
