@@ -48,11 +48,11 @@ func (c *MockClient) EnableAgent(uuid string) error {
 func (c *MockClient) DeleteAgent(uuid string) error {
 	return nil
 }
-func (c *MockClient) AgentRunJobHistory(uuid string, offset int) (*gocd.JobRunHistory, error) {
+func (c *MockClient) AgentRunJobHistory(uuid string, offset int, pageSize int) (*gocd.AgentJobRunHistory, error) {
 	f, _ := ioutil.ReadFile("fixtures/" + uuid + "_agent_job_history_" + strconv.Itoa(offset) + ".json")
-	h := new(gocd.JobRunHistory)
-	_ = json.Unmarshal([]byte(string(f)), &h)
-	return h, nil
+	h := new(gocd.AgentJobRunHistory)
+	err := json.Unmarshal([]byte(string(f)), &h)
+	return h, err
 }
 
 func (c *MockClient) GetPipelineGroups() ([]*gocd.PipelineGroup, error) {

@@ -12,12 +12,11 @@ import (
 
 // Config for the Scraper.
 type Config struct {
-	Namespace     string
-	Registerer    prometheus.Registerer
-	GocdURL       string
-	GocdUser      string
-	GocdPass      string
-	AgentMaxPages int
+	Namespace  string
+	Registerer prometheus.Registerer
+	GocdURL    string
+	GocdUser   string
+	GocdPass   string
 }
 
 // Scraper runs one scrape loop for collecting metrics.
@@ -402,7 +401,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		}
 
 		ajh := &AgentJobHistory{}
-		if err := ajh.GetJobHistory(client, agents, agentJobHistoryCache, conf.AgentMaxPages); err != nil {
+		if err := ajh.GetJobHistory(client, agents, agentJobHistoryCache); err != nil {
 			return err
 		}
 
@@ -421,13 +420,20 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 					a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 				).Inc()
 
-				prevTime := jobHistory.ScheduledDate
+				prevTime, err := jobHistory.getScheduled()
+				if err != nil {
+					return err
+				}
 				for _, t := range jobHistory.GetOrderedStateTransitions() {
-					duration := (t.StateChangeTime - prevTime) / 1000
+					stateTime, err := time.Parse(time.RFC3339, t.StateChangeTime)
+					if err != nil {
+						return err
+					}
+					duration := stateTime.Unix() - prevTime
 					agentJobDurationGauge.WithLabelValues(
 						t.State, a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 					).Set(float64(duration))
-					prevTime = t.StateChangeTime
+					prevTime = stateTime.Unix()
 				}
 			}
 		}
