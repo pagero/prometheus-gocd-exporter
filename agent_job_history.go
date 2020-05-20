@@ -1,25 +1,34 @@
 package gocdexporter
 
 import (
-	"sort"
-
+	"fmt"
 	"github.com/pagero/go-gocd-ashwanth"
+	"sort"
+	"time"
 )
 
-type AgentJobHistoryCache map[string]int
+type AgentJobHistoryCache map[string]string
 
 type AgentJobHistory struct {
 	AgentJobHistory map[string][]*JobHistory
 }
 
 type JobHistory struct {
-	*gocd.JobHistory
+	*gocd.AgentJobHistory
 }
 
-func (j *JobHistory) GetOrderedStateTransitions() []gocd.JobStateTransition {
+func (j *JobHistory) GetOrderedStateTransitions() []gocd.AgentJobStateTransition {
 	t := j.JobStateTransitions
 	sort.Slice(t, func(i, j int) bool {
-		return t[i].StateChangeTime < t[j].StateChangeTime
+		t1, err := time.Parse(time.RFC3339, t[i].StateChangeTime)
+		if err != nil {
+			return false
+		}
+		t2, err := time.Parse(time.RFC3339, t[j].StateChangeTime)
+		if err != nil {
+			return false
+		}
+		return t1.Unix() < t2.Unix()
 	})
 	return t
 }
@@ -31,38 +40,51 @@ func (a *AgentJobHistory) Add(agent string, jobHistory *JobHistory) {
 	a.AgentJobHistory[agent] = append(a.AgentJobHistory[agent], jobHistory)
 }
 
-func (a *AgentJobHistory) GetJobHistory(client gocd.Client, agents []*gocd.Agent, cache AgentJobHistoryCache, maxPages int) error {
+func (a *AgentJobHistory) GetJobHistory(client gocd.Client, agents []*gocd.Agent, cache AgentJobHistoryCache) error {
+	offset := 0
+	pageSize := 100
 	for _, agent := range agents {
-		offset := 0
-		total := 1
-		pageSize := 1
 		firstRun := false
-		for pageSize > 0 && offset/pageSize < maxPages && offset < total {
-			cachedJobID := cache[agent.Hostname]
-			if cachedJobID == 0 {
-				firstRun = true
+		cachedJobID := cache[agent.Hostname]
+		if cachedJobID == "" {
+			firstRun = true
+		}
+		history, err := client.AgentRunJobHistory(agent.UUID, offset, pageSize)
+		if err != nil {
+			return err
+		}
+		jobs := history.Jobs
+		firstID := ""
+		if len(jobs) > 0 {
+			firstID = getJobID(&JobHistory{jobs[0]})
+			if firstID != cachedJobID {
+				cache[agent.Hostname] = firstID
 			}
-			history, err := client.AgentRunJobHistory(agent.UUID, offset)
-			if err != nil {
-				return err
-			}
-			jobs := history.Jobs
-			pageSize = history.Pagination.PageSize
-			total = history.Pagination.Total
-			if len(jobs) > 0 && jobs[0].ID > cachedJobID {
-				cache[agent.Hostname] = jobs[0].ID
-			}
-			for _, job := range jobs {
-				if cachedJobID >= job.ID && !firstRun {
-					break
-				}
-				a.Add(agent.Hostname, &JobHistory{job})
-			}
-			if !firstRun {
+		}
+		for _, job := range jobs {
+			jh := &JobHistory{job}
+			if cachedJobID == getJobID(jh) && !firstRun {
 				break
 			}
-			offset += pageSize
+			a.Add(agent.Hostname, jh)
 		}
 	}
 	return nil
+}
+
+func getJobID(jh *JobHistory) string {
+	return fmt.Sprintf("%v-%v-%v-%v-%v", jh.PipelineName, jh.PipelineCounter, jh.StageName, jh.StageCounter, jh.Name)
+}
+
+func (ajh *JobHistory) getScheduled() (int64, error) {
+	for _, t := range ajh.JobStateTransitions {
+		if t.State == "Scheduled" {
+			timestamp, err := time.Parse(time.RFC3339, t.StateChangeTime)
+			if err != nil {
+				return 0, err
+			}
+			return timestamp.Unix(), nil
+		}
+	}
+	return 0, fmt.Errorf("Could not find Scheduled time for job with id: %v", getJobID(ajh))
 }
