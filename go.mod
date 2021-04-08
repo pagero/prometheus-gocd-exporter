@@ -4,8 +4,11 @@ go 1.16
 
 require (
 	github.com/elazarl/goproxy v0.0.0-20210110162100-a92cc753f88e // indirect
-	github.com/pagero/go-gocd-ashwanth v0.0.0-20210407123222-9be0c81c3646
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/pagero/go-gocd-ashwanth v0.0.0-20210408090919-c714d47495ee
 	github.com/parnurzeal/gorequest v0.2.16 // indirect
 	github.com/prometheus/client_golang v1.10.0
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	moul.io/http2curl v1.0.0 // indirect
 )
