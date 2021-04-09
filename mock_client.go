@@ -79,7 +79,7 @@ func (c *MockClient) UnlockPipeline(string) (*gocd.SimpleMessage, error) {
 func (c *MockClient) GetScheduledJobs() ([]*gocd.ScheduledJob, error) {
 	return nil, nil
 }
-func (c *MockClient) GetJobHistory(pipeline, stage, job string, offset int) ([]*gocd.JobHistory, error) {
+func (c *MockClient) GetJobHistory(pipeline, stage, job string) ([]*gocd.JobHistory, error) {
 	return nil, nil
 }
 func (c *MockClient) GetAllEnvironmentConfigs() ([]*gocd.EnvironmentConfig, error) {
