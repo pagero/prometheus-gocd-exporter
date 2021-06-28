@@ -113,19 +113,6 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGrou
 			"result",
 		},
 	)
-	// Can be used to detect changes in results a.k.a. flapping pipeline.
-	flappingResultGauge := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: conf.Namespace,
-			Name:      "pipelines_result_flapping",
-			Help:      "Pipeline result statuses as numbers",
-		},
-		[]string{
-			"pipeline",
-			"pipeline_group",
-			"stage",
-		},
-	)
 	buildsCount := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: conf.Namespace,
@@ -139,7 +126,7 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGrou
 	// Cache to check if counter goes up or down. Sometimes and older instance count
 	// is displayed in cctray.
 	buildsCountCache := map[string]int64{}
-	collectors := []prometheus.Collector{pipelineResultGauge, flappingResultGauge, buildsCount}
+	collectors := []prometheus.Collector{pipelineResultGauge, buildsCount}
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
 	return collectors, func(ctx context.Context) error {
@@ -180,7 +167,6 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGrou
 		}
 
 		pipelineResultGauge.Reset()
-		flappingResultGauge.Reset()
 		for pipeline, stages := range pipelineResults {
 			pipelineGroup, err := pipelineGroups.GetPipelineGroup(client, pipeline)
 			if err != nil {
@@ -190,13 +176,6 @@ func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGrou
 				pipelineResultGauge.WithLabelValues(
 					pipeline, pipelineGroup, stage, result,
 				).Set(1)
-				resultAsValue := 0.0
-				if result == "Success" {
-					resultAsValue = 1.0
-				}
-				flappingResultGauge.WithLabelValues(
-					pipeline, pipelineGroup, stage,
-				).Set(resultAsValue)
 			}
 		}
 
