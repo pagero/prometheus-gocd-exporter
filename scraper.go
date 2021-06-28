@@ -288,7 +288,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			Name:      "agent_job_results",
 			Help:      "Aggregated sum of job results per agent",
 		},
-		[]string{"agent", "pipeline", "pipeline_group", "stage", "job", "result"},
+		[]string{"pipeline", "pipeline_group", "stage", "job", "result"},
 	)
 	agentJobDurationGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -296,7 +296,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			Name:      "agent_job_state_duration_seconds",
 			Help:      "job state transition durations - Limitations: running the exporter with a longer scrape interval could make this metric being overwritten if a job is run on the same agent several times within the scrape interval period.",
 		},
-		[]string{"state", "agent", "pipeline", "pipeline_group", "stage", "job", "result"},
+		[]string{"state", "pipeline", "pipeline_group", "stage", "job", "result"},
 	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -327,7 +327,6 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			"rerun",
 			"state",
 			"result",
-			"agent",
 		},
 	)
 	agentFreeSpaceGauge := prometheus.NewGaugeVec(
@@ -391,7 +390,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			}
 			jobStats = append(jobStats, []string{
 				pGroup, job.PipelineName, job.StageName, job.Name,
-				rerun, job.State, job.Result, a.Hostname,
+				rerun, job.State, job.Result,
 			})
 		}
 
@@ -417,7 +416,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 				}
 
 				agentJobResultCounter.WithLabelValues(
-					a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+					jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 				).Inc()
 
 				prevTime, err := jobHistory.getScheduled()
@@ -431,7 +430,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 					}
 					duration := stateTime.Unix() - prevTime
 					agentJobDurationGauge.WithLabelValues(
-						t.State, a.Hostname, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+						t.State, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
 					).Set(float64(duration))
 					prevTime = stateTime.Unix()
 				}
