@@ -329,19 +329,9 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			"result",
 		},
 	)
-	agentFreeSpaceGauge := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: conf.Namespace,
-			Name:      "agent_free_space_bytes",
-			Help:      "Available bytes on agent storage",
-		},
-		[]string{
-			"agent",
-		},
-	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
-	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentFreeSpaceGauge, agentJobResultCounter, agentJobDurationGauge}, func(ctx context.Context) error {
+	return []prometheus.Collector{agentCountGauge, agentJobGauge, agentJobResultCounter, agentJobDurationGauge}, func(ctx context.Context) error {
 		agents, err := client.GetAllAgents()
 		if err != nil {
 			return err
@@ -355,12 +345,6 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState,
 			).Add(1)
-		}
-		agentFreeSpaceGauge.Reset()
-		for _, a := range agents {
-			agentFreeSpaceGauge.WithLabelValues(
-				a.Hostname,
-			).Set(float64(a.FreeSpace))
 		}
 
 		// Slower scrape for each job history
