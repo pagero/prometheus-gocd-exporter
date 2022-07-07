@@ -315,11 +315,11 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		if err != nil {
 			return err
 		}
+		agentCountGauge.Reset()
 		if len(agents) == 0 {
-			return errors.New("AgentCollector: got 0 agents from GoCD, skipping agent metrics.")
+			return nil
 		}
 		// Quick stats first
-		agentCountGauge.Reset()
 		for _, a := range agents {
 			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState,
