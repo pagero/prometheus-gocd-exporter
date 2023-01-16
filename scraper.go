@@ -74,27 +74,45 @@ func NewScraper(conf *Config) (Scraper, error) {
 	}, nil
 }
 
-func newScheduledCollector(conf *Config) (
-	[]prometheus.Collector, Scraper,
-) {
-	scheduledGauge := prometheus.NewGauge(
+func newScheduledCollector(conf *Config) ([]prometheus.Collector, Scraper) {
+	const resourceUndefined = "undefined"
+
+	scheduledGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: conf.Namespace,
 			Name:      "jobs_scheduled_count",
 			Help:      "Number of jobs scheduled",
 		},
+		[]string{
+			"resource",
+		},
 	)
 
 	client := gocd.New(conf.GocdURL, conf.GocdUser, conf.GocdPass)
 
-	return []prometheus.Collector{scheduledGauge}, func(ctx context.Context) error {
-		jobs, err := client.GetScheduledJobs()
-		if err != nil {
-			return err
+	return []prometheus.Collector{scheduledGauge},
+		func(ctx context.Context) error {
+			scheduledGauge.Reset()
+			scheduledGauge.WithLabelValues(resourceUndefined).Set(0)
+
+			jobs, err := client.GetScheduledJobs()
+			if err != nil {
+				return err
+			}
+
+			for _, job := range jobs {
+				resource := resourceUndefined
+				if len(job.Resources()) > 0 {
+					// We assume a job has at most one resource
+					resource = job.Resources()[0]
+				}
+
+				scheduledGauge.WithLabelValues(
+					resource,
+				).Add(1)
+			}
+			return nil
 		}
-		scheduledGauge.Set(float64(len(jobs)))
-		return nil
-	}
 }
 
 func newPipelineResultCollector(conf *Config, ccCache *CCTrayCache, pipelineGroups PipelineGroups) (
