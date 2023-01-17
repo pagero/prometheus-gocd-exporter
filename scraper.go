@@ -19,6 +19,8 @@ type Config struct {
 	GocdPass   string
 }
 
+const resourceUndefined = "undefined"
+
 // Scraper runs one scrape loop for collecting metrics.
 type Scraper func(context.Context) error
 
@@ -75,7 +77,6 @@ func NewScraper(conf *Config) (Scraper, error) {
 }
 
 func newScheduledCollector(conf *Config) ([]prometheus.Collector, Scraper) {
-	const resourceUndefined = "undefined"
 
 	scheduledGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -308,6 +309,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			"agent_state",
 			// Pending, Enabled, Disabled.
 			"agent_config_state",
+			"resource",
 		},
 	)
 	agentJobGauge := prometheus.NewGaugeVec(
@@ -339,8 +341,12 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		}
 		// Quick stats first
 		for _, a := range agents {
+			resource := resourceUndefined
+			if len(a.Resources) > 0 {
+				resource = a.Resources[0]
+			}
 			agentCountGauge.WithLabelValues(
-				a.BuildState, a.AgentState, a.AgentConfigState,
+				a.BuildState, a.AgentState, a.AgentConfigState, resource,
 			).Add(1)
 		}
 
