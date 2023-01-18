@@ -326,6 +326,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			"rerun",
 			"state",
 			"result",
+			"resource",
 		},
 	)
 
@@ -339,7 +340,8 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		if len(agents) == 0 {
 			return nil
 		}
-		// Quick stats first
+
+		jobStats := [][]string{}
 		for _, a := range agents {
 			resource := resourceUndefined
 			if len(a.Resources) > 0 {
@@ -348,11 +350,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState, resource,
 			).Add(1)
-		}
 
-		// Slower scrape for each job history
-		jobStats := [][]string{}
-		for _, a := range agents {
 			if a.BuildState != "Building" {
 				continue
 			}
@@ -377,7 +375,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			}
 			jobStats = append(jobStats, []string{
 				pGroup, job.PipelineName, job.StageName, job.Name,
-				rerun, job.State, job.Result,
+				rerun, job.State, job.Result, resource,
 			})
 		}
 

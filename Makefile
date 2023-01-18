@@ -12,3 +12,7 @@ test:
 .PHONY: release
 release: docker
 	docker push $(IMAGE):$(TAG)
+
+.PHONY: build
+build:
+	go build ./cmd/...
