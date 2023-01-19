@@ -286,7 +286,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			Name:      "agent_job_results",
 			Help:      "Aggregated sum of job results per agent",
 		},
-		[]string{"pipeline", "pipeline_group", "stage", "job", "result"},
+		[]string{"pipeline", "pipeline_group", "stage", "job", "result", "resource"},
 	)
 	agentJobDurationGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -294,7 +294,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			Name:      "agent_job_state_duration_seconds",
 			Help:      "job state transition durations - Limitations: running the exporter with a longer scrape interval could make this metric being overwritten if a job is run on the same agent several times within the scrape interval period.",
 		},
-		[]string{"state", "pipeline", "pipeline_group", "stage", "job", "result"},
+		[]string{"state", "pipeline", "pipeline_group", "stage", "job", "result", "resource"},
 	)
 	agentCountGauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -343,10 +343,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 
 		jobStats := [][]string{}
 		for _, a := range agents {
-			resource := resourceUndefined
-			if len(a.Resources) > 0 {
-				resource = a.Resources[0]
-			}
+			resource := getAgentResource(a)
 			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState, resource,
 			).Add(1)
@@ -394,6 +391,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			if _, hasJobs := ajh.AgentJobHistory[a.Hostname]; !hasJobs {
 				continue
 			}
+			resource := getAgentResource(a)
 			for _, jobHistory := range ajh.AgentJobHistory[a.Hostname] {
 				pGroup, err := pipelineGroups.GetPipelineGroup(client, jobHistory.PipelineName)
 				if err != nil {
@@ -401,7 +399,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 				}
 
 				agentJobResultCounter.WithLabelValues(
-					jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+					jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result, resource,
 				).Inc()
 
 				prevTime, err := jobHistory.getScheduled()
@@ -415,7 +413,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 					}
 					duration := stateTime.Unix() - prevTime
 					agentJobDurationGauge.WithLabelValues(
-						t.State, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result,
+						t.State, jobHistory.PipelineName, pGroup, jobHistory.StageName, jobHistory.Name, jobHistory.Result, resource,
 					).Set(float64(duration))
 					prevTime = stateTime.Unix()
 				}
@@ -423,6 +421,13 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		}
 		return nil
 	}
+}
+
+func getAgentResource(agent *gocd.Agent) string {
+	if len(agent.Resources) > 0 {
+		return agent.Resources[0]
+	}
+	return resourceUndefined
 }
 
 func newServerHealthCollector(conf *Config) (
