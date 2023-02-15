@@ -8,7 +8,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/pagero/go-gocd-ashwanth v0.0.0-20210409065851-495ee9554647
 	github.com/parnurzeal/gorequest v0.2.16 // indirect
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.11.1
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	moul.io/http2curl v1.0.0 // indirect
 )
