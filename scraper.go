@@ -349,13 +349,13 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 
 		jobStats := [][]string{}
 		for _, a := range agents {
-			}
 			if a.BuildState != "Building" {
 				continue
 			}
 			history, err := client.GetJobHistory(a.BuildDetails.PipelineName, a.BuildDetails.StageName, a.BuildDetails.JobName)
 			if err != nil {
 				return err
+			}
 			if len(history) == 0 {
 				log.Printf("No history for agent: %s", a.Hostname)
 				continue
