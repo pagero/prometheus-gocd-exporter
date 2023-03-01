@@ -2,7 +2,6 @@ package gocdexporter
 
 import (
 	"context"
-	"errors"
 	"log"
 	"time"
 
@@ -338,25 +337,28 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 		}
 		agentCountGauge.Reset()
 		if len(agents) == 0 {
+			log.Println("No agents found")
 			return nil
 		}
-
-		jobStats := [][]string{}
 		for _, a := range agents {
 			resource := getAgentResource(a)
 			agentCountGauge.WithLabelValues(
 				a.BuildState, a.AgentState, a.AgentConfigState, resource,
 			).Add(1)
+		}
 
+		jobStats := [][]string{}
+		for _, a := range agents {
+			}
 			if a.BuildState != "Building" {
 				continue
 			}
 			history, err := client.GetJobHistory(a.BuildDetails.PipelineName, a.BuildDetails.StageName, a.BuildDetails.JobName)
 			if err != nil {
 				return err
-			}
 			if len(history) == 0 {
-				return errors.New("AgentCollector: no history result")
+				log.Printf("No history for agent: %s", a.Hostname)
+				continue
 			}
 			job := history[0]
 			if job.AgentUUID != a.UUID {
@@ -370,6 +372,7 @@ func newAgentCollector(conf *Config, agentJobHistoryCache AgentJobHistoryCache, 
 			if err != nil {
 				return err
 			}
+			resource := getAgentResource(a)
 			jobStats = append(jobStats, []string{
 				pGroup, job.PipelineName, job.StageName, job.Name,
 				rerun, job.State, job.Result, resource,
